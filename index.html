@@ -147,6 +147,17 @@ header p {
     font-size: 0.75rem;
 }
 
+.svc-logo {
+    height: 16px;
+    width: auto;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.service-header .svc-logo {
+    height: 18px;
+}
+
 .results-count {
     font-family: 'Space Mono', monospace;
     font-size: 0.85rem;
@@ -322,14 +333,14 @@ header p {
 
 <script>
 const SERVICE_META = {
-    bbc_iplayer:  { label: 'BBC iPlayer',  colour: '#e4134f', icon: '📺' },
-    itvx:         { label: 'ITVX',          colour: '#00b2a9', icon: '📡' },
-    channel4:     { label: 'Channel 4',     colour: '#0d47a1', icon: '4️⃣' },
-    channel5:     { label: 'Channel 5',     colour: '#6a1b9a', icon: '5️⃣' },
-    pbs_america:  { label: 'PBS America',   colour: '#1565c0', icon: '🇺🇸' },
-    pluto_tv_uk:  { label: 'Pluto TV UK',   colour: '#1a237e', icon: '🪐' },
-    tubi:         { label: 'Tubi',           colour: '#ff6100', icon: '🎬' },
-    tptv_encore:  { label: 'TPTV Encore',   colour: '#795548', icon: '🎞️' },
+    bbc_iplayer:  { label: 'BBC iPlayer',  colour: '#e4134f', icon: 'images/iplayer.svg' },
+    itvx:         { label: 'ITVX',          colour: '#00b2a9', icon: 'images/itvx.svg' },
+    channel4:     { label: 'Channel 4',     colour: '#0d47a1', icon: 'images/channel4.svg' },
+    channel5:     { label: 'Channel 5',     colour: '#6a1b9a', icon: 'images/channel5.svg' },
+    pbs_america:  { label: 'PBS America',   colour: '#1565c0', icon: 'images/pbs.svg' },
+    pluto_tv_uk:  { label: 'Pluto TV UK',   colour: '#1a237e', icon: 'images/pluto.svg' },
+    tubi:         { label: 'Tubi',           colour: '#ff6100', icon: 'images/tubi.svg' },
+    tptv_encore:  { label: 'TPTV Encore',   colour: '#795548', icon: 'images/tptv.svg' },
 };
 
 let catalogue = [];
@@ -364,7 +375,8 @@ fetch('catalogue.json')
         for (const [svc, meta] of Object.entries(SERVICE_META)) {
             if (!counts[svc]) continue;
             html += '<span class="badge" data-service="' + svc + '" style="--svc-colour: ' + meta.colour + '">'
-                + meta.icon + ' ' + meta.label + ' <em>' + counts[svc].toLocaleString() + '</em></span>';
+                + '<img class="svc-logo" src="' + meta.icon + '" alt=""> '
+                + meta.label + ' <em>' + counts[svc].toLocaleString() + '</em></span>';
         }
         badgesDiv.innerHTML = html;
 
@@ -432,13 +444,14 @@ function doSearch() {
     let currentSvc = null;
 
     for (const r of matches) {
-        const meta = SERVICE_META[r.service] || { label: r.service, colour: '#666', icon: '📺' };
+        const meta = SERVICE_META[r.service] || { label: r.service, colour: '#666', icon: '' };
 
         if (r.service !== currentSvc) {
             if (currentSvc !== null) html += '</div>';
             currentSvc = r.service;
+            const logoHtml = meta.icon ? '<img class="svc-logo" src="' + meta.icon + '" alt=""> ' : '';
             html += '<div class="service-group"><div class="service-header" style="--svc-colour: ' + meta.colour + '">'
-                + meta.icon + ' ' + meta.label + '</div>';
+                + logoHtml + meta.label + '</div>';
         }
 
         // Highlight match
