@@ -198,82 +198,116 @@ def scrape_bbc(conn: sqlite3.Connection) -> int:
     """
     Scrape BBC iPlayer catalogue via the A-Z pages.
     Each letter page lists programmes starting with that letter.
-    URL pattern: https://www.bbc.co.uk/iplayer/a-z/{letter}
-    The page contains programme links as <a href="/iplayer/group/{pid}"> or
-    embedded JSON in window.__IPLAYER_REDUX_STATE__.
-    Falls back to Playwright if needed.
+    URL pattern: https://www.bbc.co.uk/iplayer/a-z/{letter}?page={n}
+
+    The page embeds JSON in window.__IPLAYER_REDUX_STATE__ with structure:
+        state.programmes[letter].entities  — list of {props, meta} objects
+        state.programmes[letter].count     — total programmes for that letter
+        state.pagination.totalPages        — number of pages (200 per page)
+
+    Programme hrefs use /iplayer/episodes/{pid} (multi-episode series) or
+    /iplayer/episode/{pid} (single programmes).
+
+    Falls back to HTML link parsing, then Playwright if needed.
     """
     count = 0
     base = "https://www.bbc.co.uk"
     letters = list(string.ascii_lowercase) + ["0-9"]
 
     for letter in letters:
-        url = f"{base}/iplayer/a-z/{letter}"
-        logger.info(f"BBC iPlayer A-Z: {url}")
+        page_num = 1
+        total_pages = 1  # updated after first fetch
 
-        try:
-            resp = requests.get(url, headers=HEADERS_DEFAULT, timeout=REQUEST_TIMEOUT)
-            resp.raise_for_status()
-            html = resp.text
+        while page_num <= total_pages:
+            url = f"{base}/iplayer/a-z/{letter}"
+            if page_num > 1:
+                url += f"?page={page_num}"
+            logger.info(f"BBC iPlayer A-Z: {url}")
 
-            # Try extracting from Redux state first
-            redux_match = re.search(
-                r'window\.__IPLAYER_REDUX_STATE__\s*=\s*({.+?});\s*</script>',
-                html, re.DOTALL
-            )
-            if redux_match:
-                try:
-                    state = json.loads(redux_match.group(1))
-                    entities = state.get("entities", {})
-                    # entities may contain programmes keyed by pid
-                    for pid, entity in entities.items():
-                        title = entity.get("title") or entity.get("programme", {}).get("title")
-                        if not title:
-                            continue
-                        synopsis = entity.get("synopsis") or entity.get("programme", {}).get("synopsis", "")
-                        img = entity.get("images", {}).get("default", "")
-                        if isinstance(img, dict):
-                            img = img.get("default", "")
-                        prog_url = f"{base}/iplayer/episode/{pid}"
-                        upsert_programme(conn, "bbc_iplayer", title,
-                                         url=prog_url, description=synopsis,
-                                         image_url=img, programme_id=pid)
-                        count += 1
-                    continue  # got data from Redux, skip HTML parsing
-                except json.JSONDecodeError:
-                    logger.warning(f"Failed to parse Redux JSON for {letter}")
+            try:
+                resp = requests.get(url, headers=HEADERS_DEFAULT, timeout=REQUEST_TIMEOUT)
+                resp.raise_for_status()
+                html = resp.text
 
-            # Fallback: parse HTML links
-            soup = BeautifulSoup(html, "html.parser")
-            # Look for programme links in multiple patterns
-            for a_tag in soup.find_all("a", href=True):
-                href = a_tag["href"]
-                # Match /iplayer/episode/{pid} or /iplayer/group/{pid}
-                m = re.match(r"/iplayer/(?:episode|group)/([a-z0-9]+)", href)
-                if m:
-                    pid = m.group(1)
-                    title = a_tag.get_text(strip=True)
-                    if not title or len(title) < 2:
-                        # Try to find title in parent or sibling
-                        parent = a_tag.find_parent(class_=re.compile(r"content-item|programme"))
-                        if parent:
-                            title_el = parent.find(class_=re.compile(r"title|heading"))
-                            if title_el:
-                                title = title_el.get_text(strip=True)
-                    if title and len(title) >= 2:
-                        img_tag = a_tag.find("img")
-                        img_url = img_tag.get("src", "") if img_tag else ""
-                        upsert_programme(conn, "bbc_iplayer", title,
-                                         url=f"{base}{href}",
-                                         image_url=img_url,
-                                         programme_id=pid)
-                        count += 1
+                # Try extracting from Redux state first
+                redux_match = re.search(
+                    r'window\.__IPLAYER_REDUX_STATE__\s*=\s*({.+?});\s*</script>',
+                    html, re.DOTALL
+                )
+                redux_ok = False
+                if redux_match:
+                    try:
+                        state = json.loads(redux_match.group(1))
+                        # Programme data lives at state.programmes[letter].entities
+                        letter_data = state.get("programmes", {}).get(letter, {})
+                        entities = letter_data.get("entities", [])
 
-        except requests.RequestException as e:
-            logger.error(f"BBC iPlayer error for letter {letter}: {e}")
-            continue
+                        # Update pagination from first page
+                        if page_num == 1:
+                            pagination = state.get("pagination", {})
+                            total_pages = pagination.get("totalPages", 1)
+                            letter_count = letter_data.get("count", len(entities))
+                            if total_pages > 1:
+                                logger.info(f"  Letter '{letter}': {letter_count} programmes across {total_pages} pages")
 
-        time.sleep(1)  # polite delay
+                        for entity in entities:
+                            props = entity.get("props", {})
+                            title = props.get("title", "").strip()
+                            if not title:
+                                continue
+                            href = props.get("href", "")
+                            synopsis = props.get("synopsis", "")
+                            img_template = props.get("imageTemplate", "")
+                            img_url = img_template.replace("{recipe}", "320x180") if img_template else ""
+                            episodes_available = entity.get("meta", {}).get("episodesAvailable")
+
+                            # Extract PID from href: /iplayer/episode(s)/{pid}/slug
+                            pid_match = re.match(r"/iplayer/(?:episodes?|group)/([a-z0-9]+)", href)
+                            pid = pid_match.group(1) if pid_match else ""
+
+                            prog_url = f"{base}{href}" if href else ""
+                            upsert_programme(conn, "bbc_iplayer", title,
+                                             url=prog_url, description=synopsis,
+                                             image_url=img_url, programme_id=pid or title,
+                                             extra={"episodesAvailable": episodes_available} if episodes_available else None)
+                            count += 1
+
+                        if entities:
+                            redux_ok = True
+
+                    except json.JSONDecodeError:
+                        logger.warning(f"Failed to parse Redux JSON for {letter} page {page_num}")
+
+                # Fallback: parse HTML links (if Redux yielded nothing)
+                if not redux_ok:
+                    soup = BeautifulSoup(html, "html.parser")
+                    for a_tag in soup.find_all("a", href=True):
+                        href = a_tag["href"]
+                        # Match /iplayer/episode/{pid}, /iplayer/episodes/{pid}, or /iplayer/group/{pid}
+                        m = re.match(r"/iplayer/(?:episodes?|group)/([a-z0-9]+)", href)
+                        if m:
+                            pid = m.group(1)
+                            title = a_tag.get_text(strip=True)
+                            if not title or len(title) < 2:
+                                parent = a_tag.find_parent(class_=re.compile(r"content-item|programme"))
+                                if parent:
+                                    title_el = parent.find(class_=re.compile(r"title|heading"))
+                                    if title_el:
+                                        title = title_el.get_text(strip=True)
+                            if title and len(title) >= 2:
+                                img_tag = a_tag.find("img")
+                                img_url = img_tag.get("src", "") if img_tag else ""
+                                upsert_programme(conn, "bbc_iplayer", title,
+                                                 url=f"{base}{href}",
+                                                 image_url=img_url,
+                                                 programme_id=pid)
+                                count += 1
+
+            except requests.RequestException as e:
+                logger.error(f"BBC iPlayer error for letter {letter} page {page_num}: {e}")
+
+            page_num += 1
+            time.sleep(1)  # polite delay
 
     # If we got very few results from requests, try Playwright
     if count < 20:
@@ -294,10 +328,14 @@ def _scrape_bbc_playwright(conn: sqlite3.Connection) -> int:
         url = f"{base}/iplayer/a-z/{letter}"
         try:
             page, ctx = pw_new_page(url, wait_selector="a[href*='/iplayer/']", wait_ms=6000)
-            links = page.query_selector_all("a[href*='/iplayer/episode/'], a[href*='/iplayer/group/']")
+            links = page.query_selector_all(
+                "a[href*='/iplayer/episode/'], "
+                "a[href*='/iplayer/episodes/'], "
+                "a[href*='/iplayer/group/']"
+            )
             for link in links:
                 href = link.get_attribute("href") or ""
-                m = re.match(r"/iplayer/(?:episode|group)/([a-z0-9]+)", href)
+                m = re.match(r"/iplayer/(?:episodes?|group)/([a-z0-9]+)", href)
                 if not m:
                     continue
                 pid = m.group(1)
