@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamFind UK</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#070b12;--surface:#0e1520;--surface2:#141c2c;--border:rgba(255,255,255,0.07);
+    --border2:rgba(255,255,255,0.12);--text:#e9eaf2;--muted:#5e6a85;--accent:#3d8ef0;
+    --green:#22c55e;--amber:#f59e0b;--red:#ef4444;
+    --bbc:#e4173e;--itv:#e8632a;--c4:#7d2cf8;--tptv:#c8a84b;
+    --pbs:#1b82d4;--c5:#0d9ef0;--pluto:#f0b90b;--tubi:#fa3c00;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80vw 40vh at 50% -5%,rgba(61,142,240,.07) 0%,transparent 60%),radial-gradient(ellipse 60vw 30vh at 80% 100%,rgba(125,44,248,.05) 0%,transparent 50%);pointer-events:none;z-index:0}
+
+  header{position:relative;z-index:10;padding:2.5rem 2rem 0;text-align:center}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.8rem,6vw,5rem);letter-spacing:.1em;background:linear-gradient(140deg,#fff 0%,#a8c8ff 45%,var(--accent) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+  .tagline{font-size:.78rem;color:var(--muted);letter-spacing:.22em;text-transform:uppercase;margin-top:.3rem;font-weight:300}
+
+  /* Proxy status pill */
+  .proxy-status{display:inline-flex;align-items:center;gap:.4rem;margin-top:.8rem;padding:.3rem .8rem;border-radius:100px;border:1px solid var(--border2);background:var(--surface);font-size:.72rem;font-family:'DM Mono',monospace;color:var(--muted);cursor:pointer;transition:border-color .15s}
+  .proxy-status:hover{border-color:rgba(255,255,255,.2)}
+  .status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:background .3s}
+  .proxy-status.connected .status-dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .proxy-status.connected{color:rgba(134,239,172,.8);border-color:rgba(34,197,94,.25)}
+  .proxy-status.error .status-dot{background:var(--red)}
+  .proxy-status.error{color:rgba(252,165,165,.8);border-color:rgba(239,68,68,.25)}
+  .proxy-status.checking .status-dot{background:var(--amber);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* Search */
+  .search-wrap{position:relative;z-index:10;max-width:660px;margin:2rem auto 0;padding:0 1.5rem}
+  .search-box{display:flex;align-items:center;background:var(--surface);border:1.5px solid var(--border2);border-radius:16px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
+  .search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(61,142,240,.13),0 12px 50px rgba(0,0,0,.5)}
+  .search-icon{padding:0 .9rem 0 1.3rem;color:var(--muted);flex-shrink:0}
+  .search-input{flex:1;background:transparent;border:none;outline:none;padding:1.05rem .5rem;font-size:1.05rem;font-family:'DM Sans',sans-serif;color:var(--text);font-weight:400}
+  .search-input::placeholder{color:var(--muted)}
+  .search-btn{margin:.45rem;padding:.65rem 1.4rem;background:var(--accent);color:#fff;border:none;border-radius:11px;font-size:.9rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;transition:background .15s,transform .1s;white-space:nowrap}
+  .search-btn:hover{background:#5ca3f7}
+  .search-btn:active{transform:scale(.97)}
+  .search-btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* Chips */
+  .services-wrap{position:relative;z-index:10;max-width:780px;margin:1.5rem auto 0;padding:0 1.5rem}
+  .services-row{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap;margin-bottom:.6rem}
+  .services-label{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .toggle-all{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;border:none;background:none;font-family:'DM Sans',sans-serif;padding:0;transition:color .15s}
+  .toggle-all:hover{color:var(--text)}
+  .chips{display:flex;flex-wrap:wrap;gap:.45rem}
+  .chip{display:flex;align-items:center;gap:.42rem;padding:.38rem .85rem;border-radius:100px;border:1.5px solid var(--border);background:var(--surface);font-size:.78rem;font-weight:500;cursor:pointer;transition:all .15s;user-select:none;color:var(--muted)}
+  .chip .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;opacity:.4;transition:opacity .15s}
+  .chip:hover{border-color:rgba(255,255,255,.18);color:var(--text)}
+  .chip.active{color:var(--text);background:rgba(255,255,255,.05)}
+  .chip.active .dot{opacity:1}
+  .chip[data-s="bbc"].active{border-color:rgba(228,23,62,.5);color:#ef637e}
+  .chip[data-s="itv"].active{border-color:rgba(232,99,42,.5);color:#f09060}
+  .chip[data-s="c4"].active{border-color:rgba(125,44,248,.5);color:#aa7aff}
+  .chip[data-s="tptv"].active{border-color:rgba(200,168,75,.5);color:#d4b460}
+  .chip[data-s="pbs"].active{border-color:rgba(27,130,212,.5);color:#5aaae8}
+  .chip[data-s="c5"].active{border-color:rgba(13,158,240,.5);color:#40c0f5}
+  .chip[data-s="pluto"].active{border-color:rgba(240,185,11,.5);color:#f5c842}
+  .chip[data-s="tubi"].active{border-color:rgba(250,60,0,.5);color:#ff7044}
+  .chip[data-s="bbc"] .dot{background:var(--bbc)}.chip[data-s="itv"] .dot{background:var(--itv)}
+  .chip[data-s="c4"] .dot{background:var(--c4)}.chip[data-s="tptv"] .dot{background:var(--tptv)}
+  .chip[data-s="pbs"] .dot{background:var(--pbs)}.chip[data-s="c5"] .dot{background:var(--c5)}
+  .chip[data-s="pluto"] .dot{background:var(--pluto)}.chip[data-s="tubi"] .dot{background:var(--tubi)}
+
+  /* Main */
+  main{position:relative;z-index:5;max-width:1100px;margin:2.5rem auto 5rem;padding:0 1.5rem}
+
+  /* Proxy offline warning */
+  .offline-banner{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1.5rem;display:none}
+  .offline-banner.visible{display:block}
+  .offline-banner h3{font-size:.9rem;font-weight:600;color:rgba(252,165,165,.9);margin-bottom:.5rem}
+  .offline-banner ol{font-size:.8rem;color:var(--muted);line-height:1.9;padding-left:1.2rem}
+  .offline-banner code{font-family:'DM Mono',monospace;background:rgba(255,255,255,.07);padding:.1rem .4rem;border-radius:4px;font-size:.78rem;color:rgba(200,220,255,.8)}
+
+  /* States */
+  .state{display:none}
+  .state.visible{display:block}
+
+  /* Idle */
+  .idle-hero{text-align:center;padding:1.5rem 0 2rem;border-bottom:1px solid var(--border);margin-bottom:2rem}
+  .idle-icon{font-size:2.8rem;margin-bottom:.7rem;opacity:.45}
+  .idle-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.06em;color:var(--muted);margin-bottom:.4rem}
+  .idle-sub{font-size:.85rem;color:var(--muted);line-height:1.7;max-width:480px;margin:0 auto}
+  .idle-sub strong{color:rgba(200,215,240,.7);font-weight:500}
+
+  .setup-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem;max-width:600px;margin:0 auto}
+  .setup-box h3{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:.07em;margin-bottom:1rem;color:var(--muted)}
+  .setup-step{display:flex;gap:.9rem;margin-bottom:.9rem}
+  .step-num{width:22px;height:22px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);font-size:.7rem;font-family:'DM Mono',monospace;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--muted)}
+  .step-body{font-size:.82rem;color:var(--muted);line-height:1.6;flex:1}
+  .step-body code{font-family:'DM Mono',monospace;background:rgba(255,255,255,.07);padding:.1rem .45rem;border-radius:4px;font-size:.76rem;color:rgba(200,220,255,.85)}
+  .step-body strong{color:rgba(200,215,240,.8);font-weight:500}
+
+  /* Loading progress bar */
+  .progress-bar-wrap{max-width:660px;margin:0 auto 1.5rem;padding:0 1.5rem}
+  .progress-bar{height:3px;background:var(--surface2);border-radius:3px;overflow:hidden}
+  .progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .4s ease;width:0%}
+  .progress-label{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem}
+  .progress-text{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted)}
+  .progress-chips{display:flex;flex-wrap:wrap;gap:.35rem}
+  .progress-chip{font-size:.65rem;padding:.15rem .5rem;border-radius:100px;border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;transition:all .3s}
+  .progress-chip.done{border-color:rgba(34,197,94,.4);color:rgba(134,239,172,.8)}
+  .progress-chip.active{border-color:rgba(61,142,240,.5);color:rgba(147,197,253,.8);animation:pulse 1s infinite}
+  .progress-chip.error{border-color:rgba(239,68,68,.3);color:rgba(252,165,165,.6)}
+
+  /* Empty */
+  .empty-wrap{text-align:center;padding:3rem 0}
+  .empty-icon{font-size:3rem;opacity:.4;margin-bottom:.8rem}
+  .empty-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.06em;color:var(--muted);margin-bottom:.4rem}
+  .empty-sub{font-size:.85rem;color:var(--muted)}
+
+  /* Results header */
+  .results-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.5rem}
+  .results-info{font-family:'DM Mono',monospace;font-size:.78rem;color:var(--muted)}
+  .results-info em{font-style:normal;color:var(--accent)}
+  .results-info .elapsed{opacity:.5;margin-left:.4rem}
+  .new-search-btn{font-size:.78rem;color:var(--muted);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;padding:0;transition:color .15s}
+  .new-search-btn:hover{color:var(--text)}
+
+  /* Service group headers */
+  .svc-group{margin-bottom:2rem;animation:fadeUp .3s ease both}
+  .svc-group-header{display:flex;align-items:center;gap:.7rem;margin-bottom:.8rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+  .svc-group-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .svc-group-name{font-size:.75rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+  .svc-group-count{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);margin-left:auto}
+  .svc-group-link{font-size:.72rem;color:var(--muted);text-decoration:none;transition:color .15s}
+  .svc-group-link:hover{color:var(--text)}
+  .svc-group-empty{font-size:.78rem;color:var(--muted);font-style:italic;padding:.5rem 0}
+
+  /* Result cards grid */
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.9rem}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;text-decoration:none;color:inherit;display:block;transition:transform .18s,box-shadow .18s,border-color .18s;animation:fadeUp .25s ease both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .card:hover{transform:translateY(-3px);box-shadow:0 10px 35px rgba(0,0,0,.5)}
+  .card[data-s="bbc"]:hover{border-color:rgba(228,23,62,.4)}
+  .card[data-s="itv"]:hover{border-color:rgba(232,99,42,.4)}
+  .card[data-s="c4"]:hover{border-color:rgba(125,44,248,.4)}
+  .card[data-s="tptv"]:hover{border-color:rgba(200,168,75,.4)}
+  .card[data-s="pbs"]:hover{border-color:rgba(27,130,212,.4)}
+  .card[data-s="c5"]:hover{border-color:rgba(13,158,240,.4)}
+  .card[data-s="pluto"]:hover{border-color:rgba(240,185,11,.4)}
+  .card[data-s="tubi"]:hover{border-color:rgba(250,60,0,.4)}
+
+  .card-thumb{width:100%;aspect-ratio:16/9;background:var(--surface2);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .card-thumb img{width:100%;height:100%;object-fit:cover}
+  .card-thumb-placeholder{font-size:2.5rem;opacity:.15}
+  .card-type{position:absolute;top:.4rem;right:.4rem;padding:.15rem .45rem;border-radius:4px;font-size:.6rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);color:rgba(255,255,255,.65)}
+
+  .card-body{padding:.75rem}
+  .card-title{font-size:.88rem;font-weight:600;line-height:1.3;margin-bottom:.25rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card-desc{font-size:.72rem;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .card-watch{display:flex;align-items:center;gap:.3rem;margin-top:.5rem;font-size:.7rem;font-weight:500;color:var(--accent);opacity:.8}
+
+  @media(max-width:600px){
+    header{padding:1.8rem 1rem 0}
+    .search-wrap,.services-wrap,main{padding:0 1rem}
+    .cards-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">StreamFind UK</div>
+  <div class="tagline">Live search · Eight free UK streaming services</div>
+  <div class="proxy-status checking" id="proxyStatus" onclick="checkProxy()" title="Click to retry connection">
+    <div class="status-dot"></div>
+    <span id="proxyStatusText">Checking proxy…</span>
+  </div>
+</header>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <svg class="search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="search-input" id="searchInput" type="text" placeholder="Film or TV show title…" autocomplete="off" spellcheck="false">
+    <button class="search-btn" id="searchBtn">Search</button>
+  </div>
+</div>
+
+<div class="services-wrap">
+  <div class="services-row">
+    <span class="services-label">Services</span>
+    <button class="toggle-all" id="toggleAll">Deselect all</button>
+  </div>
+  <div class="chips" id="chips">
+    <div class="chip active" data-s="bbc"><div class="dot"></div>BBC iPlayer</div>
+    <div class="chip active" data-s="itv"><div class="dot"></div>ITVX</div>
+    <div class="chip active" data-s="c4"><div class="dot"></div>Channel 4</div>
+    <div class="chip active" data-s="c5"><div class="dot"></div>Channel 5</div>
+    <div class="chip active" data-s="pbs"><div class="dot"></div>PBS America</div>
+    <div class="chip active" data-s="pluto"><div class="dot"></div>Pluto TV</div>
+    <div class="chip active" data-s="tubi"><div class="dot"></div>Tubi</div>
+    <div class="chip active" data-s="tptv"><div class="dot"></div>TPTV Encore</div>
+  </div>
+</div>
+
+<main>
+  <div class="offline-banner" id="offlineBanner">
+    <h3>Proxy server not running</h3>
+    <ol>
+      <li>Make sure Python 3 is installed on your computer</li>
+      <li>Open a terminal in the StreamFind folder</li>
+      <li>Run: <code>pip install requests beautifulsoup4</code> (first time only)</li>
+      <li>Then run: <code>python proxy.py</code> and leave that window open</li>
+      <li>Click the status pill above to retry the connection</li>
+    </ol>
+  </div>
+
+  <!-- IDLE -->
+  <div class="state visible" id="stateIdle">
+    <div class="idle-hero">
+      <div class="idle-icon">📺</div>
+      <div class="idle-title">Real results from 8 services</div>
+      <div class="idle-sub">The local proxy fetches <strong>live search results</strong> directly from each streaming platform — not a cached catalogue. Results update in real time.</div>
+    </div>
+    <div class="setup-box">
+      <h3>Getting Started</h3>
+      <div class="setup-step"><div class="step-num">1</div><div class="step-body">Open a terminal in this folder and run <code>pip install requests beautifulsoup4</code> (one time only)</div></div>
+      <div class="setup-step"><div class="step-num">2</div><div class="step-body">Run <code>python proxy.py</code> — leave that terminal window open while you use this page</div></div>
+      <div class="setup-step"><div class="step-num">3</div><div class="step-body">The status pill above will turn <strong>green</strong> when the proxy is connected — then search away!</div></div>
+      <div class="setup-step"><div class="step-num">4</div><div class="step-body">Click result cards to go directly to that title on the streaming service</div></div>
+    </div>
+  </div>
+
+  <!-- LOADING / RESULTS (shown together — results stream in) -->
+  <div class="state" id="stateSearching">
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label">
+        <span class="progress-text" id="progressText">Searching…</span>
+        <div class="progress-chips" id="progressChips"></div>
+      </div>
+    </div>
+    <div class="results-bar" id="resultsBar" style="display:none">
+      <div class="results-info" id="resultsInfo"></div>
+      <button class="new-search-btn" id="newSearchBtn">← New search</button>
+    </div>
+    <div id="resultsContainer"></div>
+  </div>
+
+  <!-- EMPTY (only if all services return 0) -->
+  <div class="state" id="stateEmpty">
+    <div class="empty-wrap">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">No results found</div>
+      <div class="empty-sub" id="emptySub">Nothing matched your search across the selected services.</div>
+    </div>
+  </div>
+</main>
+
+<script>
+const PROXY = "http://localhost:5000";
+
+const SERVICE_META = {
+  bbc:   {name:"BBC iPlayer",  color:"#e4173e", home:"https://www.bbc.co.uk/iplayer"},
+  itv:   {name:"ITVX",         color:"#e8632a", home:"https://www.itv.com"},
+  c4:    {name:"Channel 4",    color:"#7d2cf8", home:"https://www.channel4.com"},
+  c5:    {name:"Channel 5",    color:"#0d9ef0", home:"https://www.channel5.com"},
+  pbs:   {name:"PBS America",  color:"#1b82d4", home:"https://www.pbsamerica.co.uk"},
+  pluto: {name:"Pluto TV",     color:"#f0b90b", home:"https://pluto.tv/uk/on-demand"},
+  tubi:  {name:"Tubi",         color:"#fa3c00", home:"https://tubitv.com"},
+  tptv:  {name:"TPTV Encore",  color:"#c8a84b", home:"https://www.tptvencore.co.uk"},
+};
+
+const THUMB_EMOJIS = {bbc:"🎬",itv:"📺",c4:"🎭",pbs:"🔬",c5:"📡",pluto:"🎮",tubi:"🍿",tptv:"🎞️"};
+
+let active = new Set(Object.keys(SERVICE_META));
+let proxyOk = false;
+let searchAbort = null;
+
+// ── DOM refs
+const $ = id => document.getElementById(id);
+const searchInput    = $("searchInput"),     searchBtn      = $("searchBtn");
+const proxyStatus    = $("proxyStatus"),     proxyStatusText = $("proxyStatusText");
+const offlineBanner  = $("offlineBanner");
+const stateIdle      = $("stateIdle"),       stateSearching = $("stateSearching");
+const stateEmpty     = $("stateEmpty");
+const progressFill   = $("progressFill"),    progressText   = $("progressText");
+const progressChips  = $("progressChips"),   progressWrap   = $("progressWrap");
+const resultsBar     = $("resultsBar"),      resultsInfo    = $("resultsInfo");
+const resultsContainer = $("resultsContainer");
+
+// ── Proxy health check
+async function checkProxy() {
+  proxyStatus.className = "proxy-status checking";
+  proxyStatusText.textContent = "Checking proxy…";
+  try {
+    const r = await fetch(`${PROXY}/health`, {signal: AbortSignal.timeout(3000)});
+    if (r.ok) {
+      proxyOk = true;
+      proxyStatus.className = "proxy-status connected";
+      proxyStatusText.textContent = "Proxy connected";
+      offlineBanner.classList.remove("visible");
+      if (stateIdle.classList.contains("visible")) {
+        stateIdle.querySelector(".idle-title").textContent = "Ready to search";
+        stateIdle.querySelector(".idle-sub").innerHTML = "Type a title above. Results are fetched live from each platform — not a fixed catalogue.";
+      }
+    } else throw 0;
+  } catch {
+    proxyOk = false;
+    proxyStatus.className = "proxy-status error";
+    proxyStatusText.textContent = "Proxy offline — click to retry";
+    offlineBanner.classList.add("visible");
+  }
+}
+
+// ── Chips
+$("chips").addEventListener("click", e => {
+  const chip = e.target.closest(".chip"); if (!chip) return;
+  const s = chip.dataset.s;
+  if (active.has(s)) { if (active.size > 1) { active.delete(s); chip.classList.remove("active"); } }
+  else { active.add(s); chip.classList.add("active"); }
+  updateToggleLabel();
+});
+
+function updateToggleLabel() {
+  $("toggleAll").textContent = active.size === Object.keys(SERVICE_META).length ? "Deselect all" : "Select all";
+}
+
+$("toggleAll").addEventListener("click", () => {
+  const all = Object.keys(SERVICE_META);
+  if (active.size === all.length) {
+    active = new Set([all[0]]);
+    document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.s === all[0]));
+  } else {
+    active = new Set(all);
+    document.querySelectorAll(".chip").forEach(c => c.classList.add("active"));
+  }
+  updateToggleLabel();
+});
+
+// ── Search triggers
+searchBtn.addEventListener("click", triggerSearch);
+searchInput.addEventListener("keydown", e => { if (e.key === "Enter") triggerSearch(); });
+$("newSearchBtn").addEventListener("click", resetToIdle);
+
+function resetToIdle() {
+  showState("idle");
+  searchInput.value = "";
+  searchInput.focus();
+}
+
+function showState(name) {
+  stateIdle.classList.toggle("visible", name === "idle");
+  stateSearching.classList.toggle("visible", name === "searching");
+  stateEmpty.classList.toggle("visible", name === "empty");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Streaming search — fires all services in parallel, renders each as it
+//  completes. Results appear progressively instead of waiting for all.
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function triggerSearch() {
+  const q = searchInput.value.trim();
+  if (!q) { searchInput.focus(); return; }
+
+  if (!proxyOk) {
+    await checkProxy();
+    if (!proxyOk) { offlineBanner.classList.add("visible"); return; }
+  }
+
+  // Abort previous
+  if (searchAbort) searchAbort.abort();
+  searchAbort = new AbortController();
+  const signal = searchAbort.signal;
+
+  // Reset UI
+  showState("searching");
+  resultsContainer.innerHTML = "";
+  resultsBar.style.display = "none";
+  progressWrap.style.display = "";
+  progressFill.style.width = "0%";
+
+  const services = [...active];
+  let completed = 0;
+  let totalResults = 0;
+  const t0 = performance.now();
+
+  // Build progress chips
+  progressChips.innerHTML = services.map(s =>
+    `<span class="progress-chip active" data-ps="${s}">${SERVICE_META[s].name}</span>`
+  ).join("");
+  progressText.textContent = `Searching for "${q}"…`;
+
+  // Fire each service in parallel
+  const promises = services.map(async svc => {
+    try {
+      const url = `${PROXY}/search-single?q=${encodeURIComponent(q)}&service=${svc}`;
+      const r = await fetch(url, {signal});
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const results = data.results || [];
+
+      // Mark chip done
+      const chip = progressChips.querySelector(`[data-ps="${svc}"]`);
+      if (chip) { chip.classList.remove("active"); chip.classList.add(results.length ? "done" : "error"); }
+
+      // Render this service's results
+      if (results.length > 0) {
+        appendServiceResults(svc, results);
+        totalResults += results.length;
+      }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      const chip = progressChips.querySelector(`[data-ps="${svc}"]`);
+      if (chip) { chip.classList.remove("active"); chip.classList.add("error"); }
+    } finally {
+      completed++;
+      const pct = Math.round((completed / services.length) * 100);
+      progressFill.style.width = pct + "%";
+      if (completed >= services.length) finalizeSearch(q, totalResults, t0);
+    }
+  });
+
+  await Promise.allSettled(promises);
+}
+
+function finalizeSearch(query, totalResults, t0) {
+  const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+
+  if (totalResults === 0) {
+    showState("empty");
+    $("emptySub").textContent = `Nothing matched "${query}" across the selected services.`;
+    return;
+  }
+
+  // Hide progress, show results bar
+  progressWrap.style.display = "none";
+  resultsBar.style.display = "flex";
+  resultsInfo.innerHTML = `<em>${totalResults}</em> result${totalResults !== 1 ? "s" : ""} for "<em>${esc(query)}</em>" <span class="elapsed">(${elapsed}s)</span>`;
+}
+
+function appendServiceResults(svc, items) {
+  // Show results bar immediately when first results arrive
+  if (!resultsBar.style.display || resultsBar.style.display === "none") {
+    resultsBar.style.display = "flex";
+    resultsInfo.innerHTML = "Searching…";
+  }
+
+  const meta = SERVICE_META[svc] || {name: svc, color: "#888", home: "#"};
+  const group = document.createElement("div");
+  group.className = "svc-group";
+  group.innerHTML = `
+    <div class="svc-group-header">
+      <div class="svc-group-dot" style="background:${meta.color}"></div>
+      <span class="svc-group-name" style="color:${meta.color}">${meta.name}</span>
+      <span class="svc-group-count">${items.length} result${items.length !== 1 ? "s" : ""}</span>
+      <a class="svc-group-link" href="${meta.home}" target="_blank" rel="noopener">Browse →</a>
+    </div>
+    <div class="cards-grid"></div>
+  `;
+  resultsContainer.appendChild(group);
+
+  const grid = group.querySelector(".cards-grid");
+  let delay = 0;
+  for (const item of items) {
+    grid.appendChild(buildCard(item, delay, svc));
+    delay += 0.04;
+  }
+}
+
+function buildCard(item, delay, svc) {
+  const a = document.createElement("a");
+  a.className = "card";
+  a.dataset.s = svc;
+  a.href = item.url || "#";
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.style.animationDelay = `${delay}s`;
+
+  const hasImage = item.image && item.image.startsWith("http");
+  const thumb = hasImage
+    ? `<img src="${esc(item.image)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : "";
+  const placeholder = `<div class="card-thumb-placeholder" style="${hasImage ? "display:none" : ""}">${THUMB_EMOJIS[svc] || "📺"}</div>`;
+  const typeLabel = item.type ? `<div class="card-type">${esc(item.type)}</div>` : "";
+  const desc = item.synopsis ? `<div class="card-desc">${esc(item.synopsis)}</div>` : "";
+
+  a.innerHTML = `
+    <div class="card-thumb">${thumb}${placeholder}${typeLabel}</div>
+    <div class="card-body">
+      <div class="card-title">${esc(item.title)}</div>
+      ${desc}
+      <div class="card-watch">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Watch now
+      </div>
+    </div>
+  `;
+  return a;
+}
+
+function esc(s) {
+  if (!s) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── Boot
+checkProxy();
+setInterval(() => { if (!proxyOk) checkProxy(); }, 15000);
+</script>
+</body>
+</html>

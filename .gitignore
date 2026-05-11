@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+scrape.log
+catalogue.db-shm
+catalogue.db-wal
+
+# Diagnostic/debug scripts
+c4_diag2.py
+diagnose.py
+pluto_diag.py
+proxy.py
