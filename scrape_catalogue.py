@@ -1018,8 +1018,24 @@ def main():
     print("-" * 30)
     print(f"{'TOTAL':<20} {total:>8}")
 
+    # Export to JSON for the static site
+    export_json(conn, db_path.parent / "catalogue.json")
+
     close_browser()
     conn.close()
+
+
+def export_json(conn: sqlite3.Connection, out_path: Path):
+    """Export the full catalogue to a JSON file for the static search UI."""
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("""
+        SELECT service, title, url, description, image_url, category
+        FROM programmes
+        ORDER BY service, title COLLATE NOCASE
+    """).fetchall()
+    data = [dict(r) for r in rows]
+    out_path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+    logger.info(f"Exported {len(data)} programmes to {out_path}")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,9 @@ __pycache__/
 scrape.log
 catalogue.db-shm
 catalogue.db-wal
+.firebase/
+.playwright-mcp/
+firebase-debug.log
 
 # Diagnostic/debug scripts
 c4_diag2.py

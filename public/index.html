@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UK Free Streaming Search</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+    --bg: #0c0e12;
+    --surface: #161920;
+    --surface2: #1e222c;
+    --border: #2a2f3a;
+    --text: #e8eaed;
+    --text-dim: #8a8f9c;
+    --accent: #60a5fa;
+    --accent-glow: rgba(96, 165, 250, 0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+header h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+header p {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+
+.search-box {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 1rem 1.2rem 1rem 3rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-box input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.search-box input::placeholder { color: var(--text-dim); }
+
+.search-box .icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    pointer-events: none;
+}
+
+.search-box .clear-btn {
+    position: absolute;
+    right: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--surface2);
+    border: none;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: none;
+    font-family: 'Space Mono', monospace;
+}
+
+.badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    justify-content: center;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-left: 3px solid var(--svc-colour);
+    user-select: none;
+}
+
+.badge:hover {
+    background: var(--surface2);
+    border-color: var(--svc-colour);
+}
+
+.badge.active {
+    background: var(--surface2);
+    border-color: var(--svc-colour);
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.1);
+}
+
+.badge em {
+    font-style: normal;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+}
+
+.results-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+    padding-left: 0.2rem;
+}
+
+.no-results {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-dim);
+    font-size: 1rem;
+}
+
+.service-group {
+    margin-bottom: 1.5rem;
+}
+
+.service-header {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--svc-colour);
+    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.result-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s;
+}
+
+.result-card:hover {
+    background: var(--surface2);
+    border-color: var(--accent);
+    transform: translateX(2px);
+}
+
+.card-image {
+    width: 64px;
+    height: 48px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+}
+
+.card-title mark {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+.card-desc {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-arrow {
+    color: var(--text-dim);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+.result-card:hover .card-arrow {
+    transform: translateX(3px);
+    color: var(--accent);
+}
+
+.footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.8rem;
+}
+
+.footer kbd {
+    font-family: 'Space Mono', monospace;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.75rem;
+}
+
+.loading {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-dim);
+}
+
+.loading .spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-bottom: 0.5rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 600px) {
+    .container { padding: 1rem; }
+    header h1 { font-size: 1.3rem; }
+    .card-image { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>UK FREE STREAMING SEARCH</h1>
+        <p id="subtitle">Loading catalogue&hellip;</p>
+    </header>
+
+    <div class="search-box">
+        <span class="icon">&#x2315;</span>
+        <input type="text" id="searchInput" placeholder="Search titles&hellip;" autofocus disabled>
+        <button type="button" class="clear-btn" id="clearBtn">ESC</button>
+    </div>
+
+    <div class="badges" id="badges"></div>
+
+    <div id="results">
+        <div class="loading"><div class="spinner"></div><br>Loading catalogue&hellip;</div>
+    </div>
+
+    <div class="footer">
+        <kbd>/</kbd> to focus &nbsp; <kbd>ESC</kbd> to clear &nbsp; Results open in a new tab
+    </div>
+</div>
+
+<script>
+const SERVICE_META = {
+    bbc_iplayer:  { label: 'BBC iPlayer',  colour: '#e4134f', icon: '📺' },
+    itvx:         { label: 'ITVX',          colour: '#00b2a9', icon: '📡' },
+    channel4:     { label: 'Channel 4',     colour: '#0d47a1', icon: '4️⃣' },
+    channel5:     { label: 'Channel 5',     colour: '#6a1b9a', icon: '5️⃣' },
+    pbs_america:  { label: 'PBS America',   colour: '#1565c0', icon: '🇺🇸' },
+    pluto_tv_uk:  { label: 'Pluto TV UK',   colour: '#1a237e', icon: '🪐' },
+    tubi:         { label: 'Tubi',           colour: '#ff6100', icon: '🎬' },
+    tptv_encore:  { label: 'TPTV Encore',   colour: '#795548', icon: '🎞️' },
+};
+
+let catalogue = [];
+let activeService = '';
+const input = document.getElementById('searchInput');
+const clearBtn = document.getElementById('clearBtn');
+const resultsDiv = document.getElementById('results');
+const badgesDiv = document.getElementById('badges');
+const subtitle = document.getElementById('subtitle');
+let debounceTimer;
+
+// Load catalogue
+fetch('catalogue.json')
+    .then(r => r.json())
+    .then(data => {
+        catalogue = data;
+        input.disabled = false;
+        input.focus();
+
+        // Count per service
+        const counts = {};
+        let total = 0;
+        for (const item of data) {
+            counts[item.service] = (counts[item.service] || 0) + 1;
+            total++;
+        }
+
+        subtitle.textContent = total.toLocaleString() + ' programmes across ' + Object.keys(counts).length + ' services';
+
+        // Build badges
+        let html = '<span class="badge active" data-service="" style="--svc-colour: var(--accent)">All <em>' + total.toLocaleString() + '</em></span>';
+        for (const [svc, meta] of Object.entries(SERVICE_META)) {
+            if (!counts[svc]) continue;
+            html += '<span class="badge" data-service="' + svc + '" style="--svc-colour: ' + meta.colour + '">'
+                + meta.icon + ' ' + meta.label + ' <em>' + counts[svc].toLocaleString() + '</em></span>';
+        }
+        badgesDiv.innerHTML = html;
+
+        // Badge click handlers
+        badgesDiv.querySelectorAll('.badge').forEach(b => {
+            b.addEventListener('click', () => {
+                badgesDiv.querySelectorAll('.badge').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                activeService = b.dataset.service;
+                doSearch();
+                updateURL();
+            });
+        });
+
+        resultsDiv.innerHTML = '';
+
+        // Check URL for initial query
+        const params = new URLSearchParams(location.search);
+        const q = params.get('q') || '';
+        const svc = params.get('service') || '';
+        if (q) {
+            input.value = q;
+            if (svc) {
+                activeService = svc;
+                const badge = badgesDiv.querySelector('[data-service="' + svc + '"]');
+                if (badge) {
+                    badgesDiv.querySelectorAll('.badge').forEach(x => x.classList.remove('active'));
+                    badge.classList.add('active');
+                }
+            }
+            doSearch();
+        }
+    })
+    .catch(() => {
+        resultsDiv.innerHTML = '<div class="no-results">Failed to load catalogue data.</div>';
+    });
+
+// Search
+input.addEventListener('input', () => {
+    clearBtn.style.display = input.value ? 'block' : 'none';
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => { doSearch(); updateURL(); }, 150);
+});
+
+function doSearch() {
+    const q = input.value.trim().toLowerCase();
+    if (q.length < 2) {
+        resultsDiv.innerHTML = '';
+        return;
+    }
+
+    let matches = catalogue.filter(item => {
+        if (activeService && item.service !== activeService) return false;
+        return item.title.toLowerCase().includes(q);
+    });
+
+    if (matches.length > 200) matches = matches.slice(0, 200);
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = '<div class="no-results">No matches found.</div>';
+        return;
+    }
+
+    let html = '<div class="results-count">' + matches.length + ' result' + (matches.length !== 1 ? 's' : '') + '</div>';
+    let currentSvc = null;
+
+    for (const r of matches) {
+        const meta = SERVICE_META[r.service] || { label: r.service, colour: '#666', icon: '📺' };
+
+        if (r.service !== currentSvc) {
+            if (currentSvc !== null) html += '</div>';
+            currentSvc = r.service;
+            html += '<div class="service-group"><div class="service-header" style="--svc-colour: ' + meta.colour + '">'
+                + meta.icon + ' ' + meta.label + '</div>';
+        }
+
+        // Highlight match
+        const title = escapeHtml(r.title);
+        const titleLower = title.toLowerCase();
+        const idx = titleLower.indexOf(q);
+        let titleDisplay = title;
+        if (idx >= 0) {
+            titleDisplay = title.substring(0, idx)
+                + '<mark>' + title.substring(idx, idx + q.length) + '</mark>'
+                + title.substring(idx + q.length);
+        }
+
+        const desc = escapeHtml((r.description || '').substring(0, 200));
+        const url = r.url || '#';
+        const imgHtml = r.image_url
+            ? '<img src="' + escapeHtml(r.image_url) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+            : '';
+
+        html += '<a class="result-card" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">'
+            + '<div class="card-image">' + imgHtml + '</div>'
+            + '<div class="card-body">'
+            + '<div class="card-title">' + titleDisplay + '</div>'
+            + '<div class="card-desc">' + desc + '</div>'
+            + '</div>'
+            + '<div class="card-arrow">→</div>'
+            + '</a>';
+    }
+    if (currentSvc !== null) html += '</div>';
+
+    resultsDiv.innerHTML = html;
+}
+
+function updateURL() {
+    const q = input.value.trim();
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (activeService) params.set('service', activeService);
+    const url = params.toString() ? '?' + params.toString() : location.pathname;
+    history.replaceState(null, '', url);
+}
+
+function clearSearch() {
+    input.value = '';
+    activeService = '';
+    clearBtn.style.display = 'none';
+    resultsDiv.innerHTML = '';
+    badgesDiv.querySelectorAll('.badge').forEach(x => x.classList.remove('active'));
+    badgesDiv.querySelector('.badge').classList.add('active');
+    history.replaceState(null, '', location.pathname);
+    input.focus();
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+clearBtn.addEventListener('click', clearSearch);
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== input) {
+        e.preventDefault();
+        input.focus();
+    }
+    if (e.key === 'Escape') clearSearch();
+});
+</script>
+</body>
+</html>
