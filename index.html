@@ -3,9 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UK Free Streaming Search</title>
+<title>UK Freeview Search — Find What to Watch for Free | tvsearch.uk</title>
+<meta name="description" content="Search 23,000+ programmes across 13 free UK streaming services including BBC iPlayer, ITVX, Channel 4, Channel 5, STV Player, Pluto TV, Tubi, Rakuten TV and more.">
+<meta name="keywords" content="free streaming UK, watch free TV, BBC iPlayer search, ITVX, Channel 4, free movies UK, free TV shows, streaming search engine">
+<link rel="canonical" href="https://tvsearch.uk/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="UK Free Streaming Search">
+<meta property="og:description" content="Search 23,000+ programmes across 13 free UK streaming services. Find what to watch — instantly.">
+<meta property="og:url" content="https://tvsearch.uk/">
+<meta property="og:site_name" content="tvsearch.uk">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="UK Free Streaming Search">
+<meta name="twitter:description" content="Search 23,000+ programmes across 13 free UK streaming services. Find what to watch — instantly.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0c0e12">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "UK Free Streaming Search",
+  "url": "https://tvsearch.uk/",
+  "description": "Search 23,000+ programmes across 13 free UK streaming services including BBC iPlayer, ITVX, Channel 4, Channel 5, STV Player, Pluto TV, Tubi, Rakuten TV and more.",
+  "applicationCategory": "EntertainmentApplication",
+  "operatingSystem": "Any",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" }
+}
+</script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 :root {
     --bg: #0c0e12;
@@ -21,7 +46,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    font-family: 'DM Sans', -apple-system, sans-serif;
+    font-family: 'Open Sans', -apple-system, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -63,7 +88,7 @@ header p {
 .search-box input {
     width: 100%;
     padding: 1rem 1.2rem 1rem 3rem;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Open Sans', sans-serif;
     font-size: 1.1rem;
     background: var(--surface);
     border: 1px solid var(--border);
@@ -106,45 +131,20 @@ header p {
     font-family: 'Space Mono', monospace;
 }
 
-.badges {
+.service-logos {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 2rem;
+    gap: 1.2rem;
     justify-content: center;
-}
-
-.badge {
-    display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.4rem 0.75rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    border-left: 3px solid var(--svc-colour);
-    user-select: none;
+    margin-bottom: 2rem;
+    padding: 0.5rem 0;
 }
 
-.badge:hover {
-    background: var(--surface2);
-    border-color: var(--svc-colour);
-}
-
-.badge.active {
-    background: var(--surface2);
-    border-color: var(--svc-colour);
-    box-shadow: 0 0 8px rgba(96, 165, 250, 0.1);
-}
-
-.badge em {
-    font-style: normal;
-    color: var(--text-dim);
-    font-family: 'Space Mono', monospace;
-    font-size: 0.75rem;
+.service-logos img {
+    height: 22px;
+    width: auto;
+    opacity: 0.7;
 }
 
 .svc-logo {
@@ -181,7 +181,7 @@ header p {
     font-family: 'Space Mono', monospace;
     font-size: 0.85rem;
     font-weight: 700;
-    color: var(--svc-colour);
+    color: #ffffff;
     padding: 0.5rem 0;
     margin-bottom: 0.5rem;
     border-bottom: 1px solid var(--border);
@@ -310,7 +310,7 @@ header p {
 <body>
 <div class="container">
     <header>
-        <h1>UK FREE STREAMING SEARCH</h1>
+        <h1>UK FREEVIEW SEARCH</h1>
         <p id="subtitle">Loading catalogue&hellip;</p>
     </header>
 
@@ -320,7 +320,7 @@ header p {
         <button type="button" class="clear-btn" id="clearBtn">ESC</button>
     </div>
 
-    <div class="badges" id="badges"></div>
+    <div class="service-logos" id="serviceLogos"></div>
 
     <div id="results">
         <div class="loading"><div class="spinner"></div><br>Loading catalogue&hellip;</div>
@@ -337,10 +337,14 @@ const SERVICE_META = {
     itvx:         { label: 'ITVX',          colour: '#00b2a9', icon: 'images/itvx.svg' },
     channel4:     { label: 'Channel 4',     colour: '#0d47a1', icon: 'images/channel4.svg' },
     channel5:     { label: 'Channel 5',     colour: '#6a1b9a', icon: 'images/channel5.svg' },
+    tptv_encore:  { label: 'TPTV Encore',   colour: '#795548', icon: 'images/tptv.svg' },
     pbs_america:  { label: 'PBS America',   colour: '#1565c0', icon: 'images/pbs.svg' },
+    uktv_play:    { label: 'UKTV Play',     colour: '#e91e63', icon: 'images/uktv.svg' },
+    rakuten_tv:   { label: 'Rakuten TV',    colour: '#bf0000', icon: 'images/rakuten.svg' },
+    filmzie:      { label: 'Filmzie',        colour: '#00b4d8', icon: 'images/filmzie.svg' },
+    wedotv:       { label: 'Wedotv',         colour: '#4caf50', icon: 'images/wedotv.svg' },
     pluto_tv_uk:  { label: 'Pluto TV UK',   colour: '#1a237e', icon: 'images/pluto.svg' },
     tubi:         { label: 'Tubi',           colour: '#ff6100', icon: 'images/tubi.svg' },
-    tptv_encore:  { label: 'TPTV Encore',   colour: '#795548', icon: 'images/tptv.svg' },
 };
 
 let catalogue = [];
@@ -348,7 +352,7 @@ let activeService = '';
 const input = document.getElementById('searchInput');
 const clearBtn = document.getElementById('clearBtn');
 const resultsDiv = document.getElementById('results');
-const badgesDiv = document.getElementById('badges');
+const logosDiv = document.getElementById('serviceLogos');
 const subtitle = document.getElementById('subtitle');
 let debounceTimer;
 
@@ -368,28 +372,15 @@ fetch('catalogue.json')
             total++;
         }
 
-        subtitle.textContent = total.toLocaleString() + ' programmes across ' + Object.keys(counts).length + ' services';
+        subtitle.textContent = 'This week there are ' + total.toLocaleString() + ' programmes across ' + Object.keys(counts).length + ' services';
 
-        // Build badges
-        let html = '<span class="badge active" data-service="" style="--svc-colour: var(--accent)">All <em>' + total.toLocaleString() + '</em></span>';
+        // Build logo strip
+        let logoHtml = '';
         for (const [svc, meta] of Object.entries(SERVICE_META)) {
             if (!counts[svc]) continue;
-            html += '<span class="badge" data-service="' + svc + '" style="--svc-colour: ' + meta.colour + '">'
-                + '<img class="svc-logo" src="' + meta.icon + '" alt=""> '
-                + meta.label + ' <em>' + counts[svc].toLocaleString() + '</em></span>';
+            logoHtml += '<img src="' + meta.icon + '" alt="' + meta.label + '">';
         }
-        badgesDiv.innerHTML = html;
-
-        // Badge click handlers
-        badgesDiv.querySelectorAll('.badge').forEach(b => {
-            b.addEventListener('click', () => {
-                badgesDiv.querySelectorAll('.badge').forEach(x => x.classList.remove('active'));
-                b.classList.add('active');
-                activeService = b.dataset.service;
-                doSearch();
-                updateURL();
-            });
-        });
+        logosDiv.innerHTML = logoHtml;
 
         resultsDiv.innerHTML = '';
 
@@ -399,14 +390,7 @@ fetch('catalogue.json')
         const svc = params.get('service') || '';
         if (q) {
             input.value = q;
-            if (svc) {
-                activeService = svc;
-                const badge = badgesDiv.querySelector('[data-service="' + svc + '"]');
-                if (badge) {
-                    badgesDiv.querySelectorAll('.badge').forEach(x => x.classList.remove('active'));
-                    badge.classList.add('active');
-                }
-            }
+            if (svc) activeService = svc;
             doSearch();
         }
     })
@@ -425,6 +409,7 @@ function doSearch() {
     const q = input.value.trim().toLowerCase();
     if (q.length < 2) {
         resultsDiv.innerHTML = '';
+        resultsDiv.before(logosDiv);
         return;
     }
 
@@ -437,6 +422,7 @@ function doSearch() {
 
     if (matches.length === 0) {
         resultsDiv.innerHTML = '<div class="no-results">No matches found.</div>';
+        resultsDiv.after(logosDiv);
         return;
     }
 
@@ -483,6 +469,7 @@ function doSearch() {
     if (currentSvc !== null) html += '</div>';
 
     resultsDiv.innerHTML = html;
+    resultsDiv.after(logosDiv);
 }
 
 function updateURL() {
@@ -499,8 +486,7 @@ function clearSearch() {
     activeService = '';
     clearBtn.style.display = 'none';
     resultsDiv.innerHTML = '';
-    badgesDiv.querySelectorAll('.badge').forEach(x => x.classList.remove('active'));
-    badgesDiv.querySelector('.badge').classList.add('active');
+    resultsDiv.before(logosDiv);
     history.replaceState(null, '', location.pathname);
     input.focus();
 }
