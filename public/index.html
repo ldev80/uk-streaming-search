@@ -30,7 +30,14 @@
 }
 </script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 400 700;
+    font-stretch: 100%;
+    font-display: swap;
+    src: url('fonts/open-sans.woff2') format('woff2');
+}
 
 :root {
     --bg: #0c0e12;
@@ -330,6 +337,7 @@ header p {
 
     <div class="footer">
         <kbd>/</kbd> to focus &nbsp; <kbd>ESC</kbd> to clear &nbsp; Results open in a new tab
+        <br><a href="/privacy.html" style="color: var(--text-dim); text-decoration: none; font-size: 0.75rem;">Privacy Policy</a>
     </div>
 </div>
 
