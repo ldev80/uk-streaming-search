@@ -942,6 +942,293 @@ def _tptv_slug_to_title(slug: str) -> str:
     return " ".join(result)
 
 
+# ── STV Player ────────────────────────────────────────────────────────────
+
+def scrape_stv(conn: sqlite3.Connection) -> int:
+    """
+    Scrape STV Player catalogue via their public JSON API.
+    Paginate with limit=300 until no more results.
+    """
+    count = 0
+    seen_ids = set()
+    offset = 0
+    limit = 300
+
+    while True:
+        url = f"https://player.api.stv.tv/v1/programmes?limit={limit}&offset={offset}"
+        logger.info(f"STV Player: fetching offset={offset}")
+        try:
+            resp = requests.get(url, headers=HEADERS_DEFAULT, timeout=REQUEST_TIMEOUT)
+            if resp.status_code != 200:
+                logger.warning(f"STV Player returned {resp.status_code} at offset {offset}")
+                break
+            data = resp.json()
+            results = data.get("results", [])
+            if not results:
+                break
+            for item in results:
+                pid = str(item.get("guid") or item.get("id", ""))
+                if not pid or pid in seen_ids:
+                    continue
+                seen_ids.add(pid)
+                title = (item.get("name") or item.get("shortName", "")).strip()
+                if not title:
+                    continue
+                watch_url = item.get("_permalink", "")
+                img_url = ""
+                images = item.get("images", [])
+                if isinstance(images, list):
+                    for img in images:
+                        if img.get("imageType") == "mainImage":
+                            img_url = img.get("_filepath", "")
+                            break
+                    if not img_url and images:
+                        img_url = images[0].get("_filepath", "")
+                genre = item.get("genre", {})
+                genre_name = genre.get("name", "") if isinstance(genre, dict) else ""
+                upsert_programme(conn, "stv_player", title,
+                                 url=watch_url,
+                                 description=item.get("shortDescription", item.get("longDescription", "")),
+                                 image_url=img_url,
+                                 programme_id=pid,
+                                 extra={"genre": genre_name} if genre_name else None)
+                count += 1
+            if len(results) < limit:
+                break
+            offset += limit
+        except (requests.RequestException, json.JSONDecodeError) as e:
+            logger.error(f"STV Player error at offset {offset}: {e}")
+            break
+        time.sleep(0.5)
+
+    conn.commit()
+    logger.info(f"STV Player: {count} programmes")
+    return count
+
+
+# ── UKTV Play ─────────────────────────────────────────────────────────────
+
+def scrape_uktv(conn: sqlite3.Connection) -> int:
+    """
+    Scrape UKTV Play (U) catalogue via their brand list API.
+    Single JSON endpoint returns all available shows.
+    """
+    count = 0
+    seen_ids = set()
+
+    logger.info("UKTV Play: fetching brand list")
+    try:
+        resp = requests.get(
+            "https://vschedules.uktv.co.uk/vod/brand_list/?format=json",
+            headers=HEADERS_DEFAULT, timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        brands = data if isinstance(data, list) else data.get("brands", data.get("results", []))
+        logger.info(f"UKTV Play: API returned {len(brands)} brands")
+
+        for brand in brands:
+            bid = str(brand.get("id") or brand.get("slug", ""))
+            if not bid or bid in seen_ids:
+                continue
+            seen_ids.add(bid)
+            title = (brand.get("name") or brand.get("title", "")).strip()
+            if not title:
+                continue
+            slug = brand.get("slug", "")
+            watch_url = f"https://u.co.uk/shows/{slug}/watch-online" if slug else ""
+            img_url = brand.get("image", brand.get("image_url", ""))
+            upsert_programme(conn, "uktv_play", title,
+                             url=watch_url,
+                             description=brand.get("synopsis", brand.get("description", "")),
+                             image_url=img_url,
+                             programme_id=bid,
+                             extra={"channel": brand.get("channel"), "genre": brand.get("genre")})
+            count += 1
+
+    except (requests.RequestException, json.JSONDecodeError) as e:
+        logger.error(f"UKTV Play error: {e}")
+
+    conn.commit()
+    logger.info(f"UKTV Play: {count} programmes")
+    return count
+
+
+# ── Filmzie ───────────────────────────────────────────────────────────────
+
+def scrape_filmzie(conn: sqlite3.Connection) -> int:
+    """
+    Scrape Filmzie catalogue via their paginated content API.
+    Response structure: { data: { data: [...items], paging: { total, limit, offset } } }
+    Filmzie is app-based so URLs point to the main site.
+    """
+    count = 0
+    seen_ids = set()
+    offset = 0
+    limit = 100
+
+    while True:
+        url = f"https://filmzie.com/api/v1/content?limit={limit}&offset={offset}"
+        logger.info(f"Filmzie: fetching offset={offset}")
+        try:
+            resp = requests.get(url, headers=HEADERS_DEFAULT, timeout=REQUEST_TIMEOUT)
+            if resp.status_code != 200:
+                logger.warning(f"Filmzie returned {resp.status_code} at offset {offset}")
+                break
+            outer = resp.json().get("data", {})
+            items = outer.get("data", [])
+            paging = outer.get("paging", {})
+            total = paging.get("total", 0)
+            if not items:
+                break
+            for item in items:
+                fid = str(item.get("id", ""))
+                if not fid or fid in seen_ids:
+                    continue
+                seen_ids.add(fid)
+                title = (item.get("title") or "").strip()
+                if not title:
+                    continue
+                sef = item.get("sefName", "")
+                categories = item.get("category", [])
+                released = (item.get("released") or "")[:4]
+                upsert_programme(conn, "filmzie", title,
+                                 url=f"https://filmzie.com/{sef}" if sef else "https://filmzie.com",
+                                 description=(item.get("description") or "")[:500],
+                                 programme_id=fid,
+                                 extra={"genre": categories,
+                                        "year": released,
+                                        "type": item.get("type")})
+                count += 1
+            if offset + limit >= total:
+                break
+            offset += limit
+        except (requests.RequestException, json.JSONDecodeError) as e:
+            logger.error(f"Filmzie error at offset {offset}: {e}")
+            break
+        time.sleep(0.5)
+
+    conn.commit()
+    logger.info(f"Filmzie: {count} programmes")
+    return count
+
+
+# ── Rakuten TV ────────────────────────────────────────────────────────────
+
+def scrape_rakuten(conn: sqlite3.Connection) -> int:
+    """
+    Scrape Rakuten TV free UK catalogue via their Gizmo API.
+    Two endpoints: free movies and free TV shows.
+    Response: { data: [...items], meta: { pagination: { total_pages, page } } }
+    """
+    count = 0
+    seen_ids = set()
+    headers = {
+        **HEADERS_DEFAULT,
+        "Accept": "application/json",
+    }
+
+    lists = [
+        ("free-all-movies", "movies"),
+        ("free-all-tv-shows", "tv-series"),
+    ]
+
+    for list_slug, url_path in lists:
+        page = 1
+        while True:
+            url = (f"https://gizmo.rakuten.tv/v3/lists/{list_slug}/contents"
+                   f"?classification_id=18&device_identifier=web"
+                   f"&locale=en&market_code=uk&per_page=50&page={page}")
+            logger.info(f"Rakuten TV: fetching {list_slug} page {page}")
+            try:
+                resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+                if resp.status_code != 200:
+                    logger.warning(f"Rakuten TV returned {resp.status_code}")
+                    break
+                body = resp.json()
+                items = body.get("data", [])
+                if not items:
+                    break
+                for item in items:
+                    rid = str(item.get("id", ""))
+                    if not rid or rid in seen_ids:
+                        continue
+                    seen_ids.add(rid)
+                    title = (item.get("title") or "").strip()
+                    if not title:
+                        continue
+                    watch_url = f"https://www.rakuten.tv/uk/{url_path}/{rid}"
+                    imgs = item.get("images", {})
+                    img_url = ""
+                    if isinstance(imgs, dict):
+                        img_url = imgs.get("artwork", imgs.get("snapshot", "")) or ""
+                    upsert_programme(conn, "rakuten_tv", title,
+                                     url=watch_url,
+                                     description=item.get("short_plot", ""),
+                                     image_url=img_url,
+                                     programme_id=rid,
+                                     extra={"year": item.get("year"),
+                                            "type": url_path,
+                                            "genre": item.get("genres")})
+                    count += 1
+                pagination = body.get("meta", {}).get("pagination", {})
+                total_pages = pagination.get("total_pages", 1)
+                if page >= total_pages:
+                    break
+                page += 1
+            except (requests.RequestException, json.JSONDecodeError) as e:
+                logger.error(f"Rakuten TV error for {list_slug} page {page}: {e}")
+                break
+            time.sleep(0.5)
+
+    conn.commit()
+    logger.info(f"Rakuten TV: {count} programmes")
+    return count
+
+
+# ── Wedotv ────────────────────────────────────────────────────────────────
+
+def scrape_wedotv(conn: sqlite3.Connection) -> int:
+    """
+    Scrape Wedotv catalogue via their movies.xml and series.xml sitemaps.
+    Filter for en-gb locale URLs only.
+    """
+    count = 0
+    seen_slugs = set()
+    from xml.etree import ElementTree as ET
+
+    for sitemap in ["movies.xml", "series.xml"]:
+        logger.info(f"Wedotv: fetching {sitemap}")
+        try:
+            resp = requests.get(
+                f"https://wedotv.com/sitemap/{sitemap}",
+                headers=HEADERS_DEFAULT, timeout=60,
+            )
+            resp.raise_for_status()
+            root = ET.fromstring(resp.content)
+            ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+            for loc_el in root.findall(".//sm:url/sm:loc", ns):
+                url_text = (loc_el.text or "").strip()
+                m = re.match(r"https://www\.wedotv\.com/en-gb/([a-z0-9-]+)", url_text)
+                if not m:
+                    continue
+                slug = m.group(1)
+                if slug in seen_slugs:
+                    continue
+                seen_slugs.add(slug)
+                title = _slug_to_title(slug)
+                upsert_programme(conn, "wedotv", title,
+                                 url=url_text,
+                                 programme_id=slug)
+                count += 1
+        except Exception as e:
+            logger.error(f"Wedotv {sitemap} error: {e}")
+
+    logger.info(f"Wedotv: {count} programmes from sitemaps")
+    conn.commit()
+    return count
+
+
 # ---------------------------------------------------------------------------
 # Service registry
 # ---------------------------------------------------------------------------
@@ -955,6 +1242,10 @@ SERVICES = {
     "pluto":     ("Pluto TV UK",    scrape_pluto_tv),
     "tubi":      ("Tubi",           scrape_tubi),
     "tptv":      ("TPTV Encore",    scrape_tptv_encore),
+    "uktv":      ("UKTV Play",      scrape_uktv),
+    "filmzie":   ("Filmzie",        scrape_filmzie),
+    "rakuten":   ("Rakuten TV",     scrape_rakuten),
+    "wedotv":    ("Wedotv",         scrape_wedotv),
 }
 
 
@@ -1056,8 +1347,32 @@ def main():
     print("-" * 30)
     print(f"{'TOTAL':<20} {total:>8}")
 
+    # Snapshot old catalogue titles before overwriting
+    catalogue_path = db_path.parent / "catalogue.json"
+    old_titles = set()
+    if catalogue_path.exists():
+        try:
+            for item in json.loads(catalogue_path.read_text()):
+                old_titles.add((item.get("service", ""), item.get("title", "").strip().lower()))
+        except (json.JSONDecodeError, IOError):
+            pass
+
     # Export to JSON for the static site
-    export_json(conn, db_path.parent / "catalogue.json")
+    export_json(conn, catalogue_path)
+
+    # Find new titles added since last scrape
+    if old_titles:
+        new_data = json.loads(catalogue_path.read_text())
+        new_titles = [
+            item for item in new_data
+            if (item.get("service", ""), item.get("title", "").strip().lower()) not in old_titles
+        ]
+        logger.info(f"Found {len(new_titles)} new titles since last scrape")
+        if new_titles:
+            new_all_path = catalogue_path.parent / "new_titles.json"
+            new_all_path.write_text(json.dumps(new_titles, ensure_ascii=False, indent=2))
+            logger.info(f"Saved new titles to {new_all_path}")
+            print(f"\n{len(new_titles)} new titles — run 'python pick_highlights.py' to choose highlights")
 
     close_browser()
     conn.close()

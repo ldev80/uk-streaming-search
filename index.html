@@ -309,10 +309,77 @@ header p {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.new-this-week {
+    display: none;
+    margin-bottom: 2rem;
+}
+
+.new-this-week h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+    color: var(--text);
+}
+
+.new-scroll {
+    display: flex;
+    gap: 0.8rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.new-card {
+    flex: 0 0 160px;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s;
+}
+
+.new-card:hover { transform: translateY(-3px); }
+
+.new-poster {
+    width: 160px;
+    height: 90px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface2);
+}
+
+.new-poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.new-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.new-service {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.15rem;
+}
+
+.new-service .svc-logo { height: 12px; }
+
 @media (max-width: 600px) {
     .container { padding: 1rem; }
     header h1 { font-size: 1.3rem; }
     .card-image { display: none; }
+    .new-card { flex: 0 0 140px; }
+    .new-poster { width: 140px; height: 79px; }
 }
 </style>
 </head>
@@ -330,6 +397,11 @@ header p {
     </div>
 
     <div class="service-logos" id="serviceLogos"></div>
+
+    <div class="new-this-week" id="newThisWeek">
+        <h2>New This Week</h2>
+        <div class="new-scroll"></div>
+    </div>
 
     <div id="results">
         <div class="loading"><div class="spinner"></div><br>Loading catalogue&hellip;</div>
@@ -408,6 +480,31 @@ fetch('catalogue.json')
         resultsDiv.innerHTML = '<div class="no-results">Failed to load catalogue data.</div>';
     });
 
+// New this week
+const newSection = document.getElementById('newThisWeek');
+fetch('new_this_week.json')
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(data => {
+        if (!data || !data.length) return;
+        const scroll = newSection.querySelector('.new-scroll');
+        let html = '';
+        for (const item of data) {
+            const meta = SERVICE_META[item.service] || { label: item.service, icon: '' };
+            const img = item.image_url || '';
+            const logoImg = meta.icon ? '<img class="svc-logo" src="' + meta.icon + '" alt="">' : '';
+            html += '<a class="new-card" href="' + escapeHtml(item.url || '#') + '" target="_blank" rel="noopener">'
+                + '<div class="new-poster">'
+                + (img ? '<img src="' + escapeHtml(img) + '" alt="' + escapeHtml(item.title) + '" loading="lazy">' : '')
+                + '</div>'
+                + '<div class="new-title">' + escapeHtml(item.title) + '</div>'
+                + '<div class="new-service">' + logoImg + ' ' + meta.label + '</div>'
+                + '</a>';
+        }
+        scroll.innerHTML = html;
+        newSection.style.display = 'block';
+    })
+    .catch(() => {});
+
 // Search
 input.addEventListener('input', () => {
     clearBtn.style.display = input.value ? 'block' : 'none';
@@ -420,8 +517,10 @@ function doSearch() {
     if (q.length < 2) {
         resultsDiv.innerHTML = '';
         resultsDiv.before(logosDiv);
+        if (newSection.querySelector('.new-scroll').children.length) newSection.style.display = 'block';
         return;
     }
+    newSection.style.display = 'none';
 
     let matches = catalogue.filter(item => {
         if (activeService && item.service !== activeService) return false;
@@ -497,6 +596,7 @@ function clearSearch() {
     clearBtn.style.display = 'none';
     resultsDiv.innerHTML = '';
     resultsDiv.before(logosDiv);
+    if (newSection.querySelector('.new-scroll').children.length) newSection.style.display = 'block';
     history.replaceState(null, '', location.pathname);
     input.focus();
 }

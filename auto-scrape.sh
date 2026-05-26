@@ -22,12 +22,14 @@ python3 scrape_catalogue.py
 # Copy updated files to the public directory for Firebase
 cp catalogue.json public/catalogue.json
 cp index.html public/index.html
+[ -f new_this_week.json ] && cp new_this_week.json public/new_this_week.json
 
 # Only commit and push if data actually changed
 if git diff --quiet catalogue.db catalogue.json 2>/dev/null; then
     echo "No changes to catalogue — skipping push and deploy."
 else
     git add catalogue.db catalogue.json public/catalogue.json
+    [ -f new_this_week.json ] && git add new_this_week.json public/new_this_week.json
     git commit -m "Update catalogue — $(date '+%Y-%m-%d')"
     git push origin main
     echo "Pushed to GitHub."

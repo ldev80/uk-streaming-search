@@ -1,10 +1,10 @@
 # StreamFind — UK Free Streaming Catalogue
 
-Scrapes and indexes content from 8 UK free streaming services into SQLite, then serves a static client-side search UI via Firebase Hosting.
+Scrapes and indexes content from 12 UK free streaming services into SQLite, then serves a static client-side search UI via Firebase Hosting.
 
 ## Architecture
 
-- `scrape_catalogue.py` — scrapes all 8 services into `catalogue.db` (SQLite), exports `catalogue.json`
+- `scrape_catalogue.py` — scrapes all 12 services into `catalogue.db` (SQLite), exports `catalogue.json`
 - `index.html` — static search UI that loads `catalogue.json` and searches entirely client-side
 - `public/` — directory served by Firebase Hosting (contains `index.html` + `catalogue.json`)
 - `auto-scrape.sh` — weekly automation: scrapes, commits to GitHub, deploys to Firebase
@@ -13,7 +13,7 @@ Scrapes and indexes content from 8 UK free streaming services into SQLite, then 
 
 ## Live site
 
-https://streamfind-2abe7.web.app
+https://tvsearch.uk (Firebase project streamfind-2abe7)
 
 ## Weekly automation
 
@@ -80,6 +80,18 @@ To manage: `launchctl list | grep streamfind` / `launchctl unload ~/Library/Laun
 ### TPTV Encore (401 — unchanged)
 **Method:** Playwright browsing and search. Titles extracted from URL slugs. No changes made.
 
+### UKTV Play (677) — added May 2026
+**Method:** Single JSON API call to `vschedules.uktv.co.uk/vod/brand_list/?format=json`. Returns full catalogue.
+
+### Filmzie (3,604) — added May 2026
+**Method:** Paginated JSON API at `filmzie.com/api/v1/content`. Response nested at `data.data` with paging info at `data.paging`. App-based service — no clean per-title web URLs.
+
+### Rakuten TV (2,193) — added May 2026
+**Method:** Gizmo API at `gizmo.rakuten.tv/v3/lists/{list}/contents` with `classification_id=18&market_code=uk`. Two lists: `free-all-movies` (2,065) and `free-all-tv-shows` (130). Paginated with `per_page=50`.
+
+### Wedotv (932) — added May 2026
+**Method:** XML sitemaps at `wedotv.com/sitemap/movies.xml` and `series.xml`. Filtered to `en-gb` locale URLs only. Titles derived from URL slugs.
+
 ## Data pipeline
 
 ```
@@ -87,8 +99,12 @@ scrape_catalogue.py
     → catalogue.db (SQLite — full data with metadata)
     → catalogue.json (compact JSON — title, service, url, description, image_url, category)
         → public/catalogue.json (copy for Firebase)
-            → Firebase Hosting (streamfind-2abe7.web.app)
+            → Firebase Hosting (tvsearch.uk / streamfind-2abe7.web.app)
 ```
+
+## Download size
+
+catalogue.json is ~7.5 MB uncompressed. Firebase serves it gzip-compressed at ~1.9 MB. Every visitor downloads the full catalogue on first load (cached by the browser after that). If this grows too large, consider splitting into per-service JSON files or adding server-side search.
 
 ## API endpoints and data sources
 
@@ -103,6 +119,10 @@ These are the external endpoints the scraper depends on. If a scraper breaks, ch
 | Channel 5 | JSON API | `corona.channel5.com/shows/search.json?query=` |
 | PBS America | XML sitemap | `pbsamerica.co.uk/wp-sitemap-posts-series-1.xml` |
 | Pluto TV UK | JSON API | `api.pluto.tv/v3/vod/categories?includeItems=true&countryCode=GB` |
+| UKTV Play | JSON API | `vschedules.uktv.co.uk/vod/brand_list/?format=json` |
+| Filmzie | JSON API | `filmzie.com/api/v1/content?limit=100&offset={n}` |
+| Rakuten TV | JSON API | `gizmo.rakuten.tv/v3/lists/free-all-movies/contents?classification_id=18&market_code=uk` |
+| Wedotv | XML sitemap | `wedotv.com/sitemap/movies.xml` and `series.xml` |
 | Tubi | Playwright | `tubitv.com/category/{genre}` and `/search/{term}` |
 | TPTV Encore | Playwright | `tptvencore.co.uk/` and `/search/{term}` |
 
@@ -122,7 +142,14 @@ python scrape_catalogue.py --list       # list service keys
 After scraping, deploy:
 ```bash
 cp catalogue.json public/catalogue.json
+cp index.html public/index.html
 firebase deploy --only hosting --project streamfind-2abe7
 ```
 
 Or use `./auto-scrape.sh` which does scrape + commit + push + deploy.
+
+## Services investigated but not added
+
+- **Plex** (~9,700 titles): VOD API at `vod.provider.plex.tv` requires a free Plex account token. Could be added with stored credentials.
+- **Xumo Play**: Complex multi-step API at `valencia-app-mds.xumo.com`. Requires channel → EPG → asset resolution and BBFC filtering.
+- **Kanopy**: Requires a library card — not truly free to the general public. 44K+ titles would also dominate the catalogue.
