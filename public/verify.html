@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confirm Alert — tvsearch.uk</title>
+<meta name="robots" content="noindex">
+<style>
+@font-face {
+    font-family: 'Open Sans';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('fonts/open-sans.woff2') format('woff2');
+}
+:root { --bg: #0c0e12; --surface: #161920; --border: #2a2f3a; --text: #e8eaed; --dim: #8a8f9c; --accent: #60a5fa; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Open Sans', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; max-width: 420px; text-align: center; width: 100%; }
+h1 { font-size: 1.2rem; margin-bottom: 1rem; }
+p { font-size: 0.9rem; color: var(--dim); margin-bottom: 0.8rem; line-height: 1.5; }
+.title { color: var(--accent); font-weight: 600; }
+.btn { display: inline-block; padding: 0.7rem 1.5rem; background: var(--accent); color: #000; border: none; border-radius: 8px; font-family: 'Open Sans', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; }
+.btn:disabled { opacity: 0.5; }
+a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="card" id="card"><h1>Confirm Your Alert</h1><p>Loading...</p></div>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import { getFirestore, doc, getDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+const db = getFirestore(initializeApp({
+    apiKey: "AIzaSyAt18YfR6pmj_RJCXTFuT1tlMOhgnC2Rf0",
+    authDomain: "streamfind-2abe7.firebaseapp.com",
+    projectId: "streamfind-2abe7",
+}));
+
+const card = document.getElementById('card');
+const token = new URLSearchParams(location.search).get('token');
+
+function show(h, p) { card.innerHTML = '<h1>' + h + '</h1>' + p; }
+
+if (!token) {
+    show('Invalid Link', '<p>This verification link is not valid.</p><p><a href="/">Back to tvsearch.uk</a></p>');
+} else {
+    try {
+        const ref = doc(db, 'alerts', token);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+            show('Alert Not Found', '<p>This alert may have already been confirmed or removed.</p><p><a href="/">Back to tvsearch.uk</a></p>');
+        } else {
+            const data = snap.data();
+            if (data.verified) {
+                show('Already Confirmed', '<p>Your alert for <span class="title">' + data.title_display + '</span> is already active.</p><p><a href="/">Back to tvsearch.uk</a></p>');
+            } else {
+                card.innerHTML = '<h1>Confirm Your Alert</h1>'
+                    + '<p>Activate alert for <span class="title">' + data.title_display + '</span>?</p>'
+                    + '<p>We\'ll email <strong>' + data.email + '</strong> when it appears on a free streaming service.</p>'
+                    + '<button class="btn" id="confirmBtn">Confirm Alert</button>';
+                document.getElementById('confirmBtn').addEventListener('click', async function() {
+                    this.disabled = true;
+                    await updateDoc(ref, { verified: true });
+                    show('Alert Confirmed!', '<p>We\'ll email you when <span class="title">' + data.title_display + '</span> appears.</p><p><a href="/">Back to tvsearch.uk</a></p>');
+                });
+            }
+        }
+    } catch (err) {
+        show('Error', '<p>Something went wrong. Please try again later.</p><p><a href="/">Back to tvsearch.uk</a></p>');
+    }
+}
+</script>
+</body>
+</html>

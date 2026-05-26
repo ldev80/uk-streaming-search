@@ -272,6 +272,75 @@ header p {
     color: var(--accent);
 }
 
+.alert-section {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.alert-heading {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+}
+
+.alert-form {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.alert-form input {
+    padding: 0.6rem 0.8rem;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 0.85rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    outline: none;
+    min-width: 0;
+}
+
+.alert-form input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.alert-form input::placeholder { color: var(--text-dim); }
+
+.alert-form button {
+    padding: 0.6rem 1.2rem;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 0.85rem;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.alert-form button:disabled { opacity: 0.5; cursor: default; }
+
+.alert-subtext {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.6rem;
+}
+
+.alert-msg {
+    font-size: 0.85rem;
+    margin-top: 0.6rem;
+}
+
+.alert-msg.ok { color: #4caf50; }
+.alert-msg.err { color: #ef5350; }
+
 .footer {
     text-align: center;
     margin-top: 3rem;
@@ -405,6 +474,17 @@ header p {
 
     <div id="results">
         <div class="loading"><div class="spinner"></div><br>Loading catalogue&hellip;</div>
+    </div>
+
+    <div class="alert-section" id="alertSection">
+        <p class="alert-heading">Can't find what you're looking for?</p>
+        <form id="alertForm" class="alert-form">
+            <input type="text" id="alertTitle" placeholder="Title to watch for" required>
+            <input type="email" id="alertEmail" placeholder="Your email" required>
+            <button type="submit" id="alertBtn">Alert Me</button>
+        </form>
+        <p class="alert-subtext">We'll email you when it appears on a free streaming service.</p>
+        <p class="alert-msg" id="alertMsg" style="display:none"></p>
     </div>
 
     <div class="footer">
@@ -615,6 +695,50 @@ document.addEventListener('keydown', (e) => {
         input.focus();
     }
     if (e.key === 'Escape') clearSearch();
+});
+</script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+const app = initializeApp({
+    apiKey: "AIzaSyAt18YfR6pmj_RJCXTFuT1tlMOhgnC2Rf0",
+    authDomain: "streamfind-2abe7.firebaseapp.com",
+    projectId: "streamfind-2abe7",
+});
+const db = getFirestore(app);
+
+document.getElementById('alertForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const titleEl = document.getElementById('alertTitle');
+    const emailEl = document.getElementById('alertEmail');
+    const btn = document.getElementById('alertBtn');
+    const msg = document.getElementById('alertMsg');
+    const title = titleEl.value.trim();
+    const email = emailEl.value.trim();
+    if (!title || !email) return;
+
+    btn.disabled = true;
+    try {
+        const token = crypto.randomUUID();
+        await setDoc(doc(db, 'alerts', token), {
+            email: email,
+            title_lower: title.toLowerCase(),
+            title_display: title,
+            verified: false,
+            verification_sent: false,
+            created_at: new Date().toISOString(),
+        });
+        document.getElementById('alertForm').style.display = 'none';
+        msg.textContent = 'Check your email to confirm your alert for “' + title + '”.';
+        msg.className = 'alert-msg ok';
+        msg.style.display = 'block';
+    } catch (err) {
+        msg.textContent = 'Something went wrong. Please try again.';
+        msg.className = 'alert-msg err';
+        msg.style.display = 'block';
+        btn.disabled = false;
+    }
 });
 </script>
 </body>

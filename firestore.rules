@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /alerts/{token} {
+      // Create: anyone, but fields must be valid and start unverified
+      allow create: if request.resource.data.keys().hasAll(['email', 'title_lower', 'title_display', 'verified', 'verification_sent', 'created_at'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 5
+        && request.resource.data.email.size() < 200
+        && request.resource.data.title_lower is string
+        && request.resource.data.title_lower.size() >= 1
+        && request.resource.data.title_lower.size() < 200
+        && request.resource.data.title_display is string
+        && request.resource.data.verified == false
+        && request.resource.data.verification_sent == false;
+
+      // Read a single doc: anyone who knows the token (can't list the collection)
+      allow get: if true;
+      allow list: if false;
+
+      // Update: only setting verified to true, nothing else
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified'])
+        && request.resource.data.verified == true;
+
+      // Delete: anyone who knows the token (for unsubscribe)
+      allow delete: if true;
+    }
+  }
+}

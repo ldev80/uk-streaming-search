@@ -37,6 +37,9 @@ else
     # Deploy to Firebase
     firebase deploy --only hosting --project streamfind-2abe7
     echo "Deployed to Firebase."
+
+    # Check alerts against new titles
+    python3 alerts.py || echo "Alert check failed (non-fatal)"
 fi
 
 echo "=== Auto-scrape finished at $(date -u '+%Y-%m-%d %H:%M:%S UTC') ==="
