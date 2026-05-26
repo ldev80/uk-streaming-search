@@ -4,30 +4,21 @@ After each weekly scrape, you can curate a "New This Week" section on the site s
 
 ## Workflow
 
-1. **After the Sunday scrape**, the scraper saves all newly added titles to `new_titles.json`.
+1. **Check your email.** After the Sunday 3am scrape, you'll receive an email at info@liamdevereux.co.uk from tvsearchuk@gmail.com listing all new titles with numbers.
 
-2. **View the new titles:**
-   ```bash
-   cd ~/Projects/streamfind
-   source venv/bin/activate
-   python pick_highlights.py
+2. **Pick your highlights.** Go to:
+   https://github.com/ldev80/uk-streaming-search/actions/workflows/pick-highlights.yml
+
+   Click **"Run workflow"** and enter the numbers from the email (comma-separated, ranges supported):
+   ```
+   3, 7, 12-15
    ```
 
-3. **Pick your highlights** by entering the numbers (comma-separated, ranges supported):
-   ```
-   > 3, 7, 12-15
-   ```
-   This saves your picks to `new_this_week.json`.
-
-4. **Deploy:**
-   ```bash
-   cp new_this_week.json public/new_this_week.json
-   firebase deploy --only hosting --project streamfind-2abe7
-   ```
+   The workflow generates `new_this_week.json`, commits it, and deploys to Firebase automatically.
 
 ## Customising thumbnails
 
-Each entry in `new_this_week.json` uses the `image_url` field for its thumbnail. To change one, edit the file directly:
+Each entry in `new_this_week.json` uses the `image_url` field for its thumbnail. To change one, edit the file directly and push:
 
 ```json
 {
@@ -38,10 +29,7 @@ Each entry in `new_this_week.json` uses the `image_url` field for its thumbnail.
 }
 ```
 
-Options for image sources:
-- **Service-provided** (default) — whatever the streaming service API returned. Quality varies.
-- **Any image URL** — paste a URL from the web. Landscape 16:9 images work best (displayed at 160x90px).
-- **Local images** — save to `public/images/highlights/` and use a relative path like `images/highlights/peaky-blinders.jpg`.
+Landscape 16:9 images work best (displayed at 160x90px).
 
 ## Clearing highlights
 
@@ -49,8 +37,9 @@ To remove the section from the site, delete `public/new_this_week.json` and rede
 
 ## How it works
 
-- `scrape_catalogue.py` compares the new catalogue against the previous `catalogue.json` before overwriting it
-- New titles (present in new but not old) are saved to `new_titles.json`
-- `pick_highlights.py` displays the list and writes your selections to `new_this_week.json`
+- GitHub Actions runs `scrape_catalogue.py` weekly, which compares the new catalogue against the previous one
+- New titles are saved to `new_titles.json` and deployed to the site
+- The curation email is sent automatically after the scrape
+- The Pick Highlights workflow reads `new_titles.json`, picks your selections, writes `new_this_week.json`, and deploys
 - `index.html` fetches `new_this_week.json` on load and renders a horizontal card strip
 - The strip hides when the user searches and reappears when they clear

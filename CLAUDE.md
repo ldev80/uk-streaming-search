@@ -7,7 +7,10 @@ Scrapes and indexes content from 12 UK free streaming services into SQLite, then
 - `scrape_catalogue.py` — scrapes all 12 services into `catalogue.db` (SQLite), exports `catalogue.json`
 - `index.html` — static search UI that loads `catalogue.json` and searches entirely client-side
 - `public/` — directory served by Firebase Hosting (contains `index.html` + `catalogue.json`)
-- `auto-scrape.sh` — weekly automation: scrapes, commits to GitHub, deploys to Firebase
+- `auto-scrape.sh` — legacy local automation (replaced by GitHub Actions)
+- `functions/index.js` — Cloud Functions: verification emails (Firestore-triggered) + alert match checking (scheduled)
+- `.github/workflows/weekly-scrape.yml` — GitHub Actions: weekly scrape, deploy, email new titles for curation
+- `.github/workflows/pick-highlights.yml` — GitHub Actions: manual trigger to select highlights and deploy
 - `search_web.py` — legacy local Python web server (queries SQLite directly, not used in production)
 - `search.py` — CLI search tool
 
@@ -17,13 +20,19 @@ https://tvsearch.uk (Firebase project streamfind-2abe7)
 
 ## Weekly automation
 
-A macOS `launchd` job runs `auto-scrape.sh` every Sunday at 3am:
-- Plist: `~/Library/LaunchAgents/uk.co.liamdevereux.streamfind-scrape.plist`
-- Scrapes all services from the local Mac (UK IP, avoids geo-blocking)
-- Exports `catalogue.json`, commits to GitHub, deploys to Firebase
-- Logs to `scrape.log`
+GitHub Actions runs `.github/workflows/weekly-scrape.yml` every Sunday at 2:00 UTC (3:00 BST):
+- Scrapes all 12 services, exports `catalogue.json`
+- Commits and pushes to GitHub, deploys to Firebase Hosting
+- Emails numbered list of new titles to info@liamdevereux.co.uk for curation
+- Scraper preserves old data if a service fails (scrape-then-replace strategy)
 
-To manage: `launchctl list | grep streamfind` / `launchctl unload ~/Library/LaunchAgents/uk.co.liamdevereux.streamfind-scrape.plist`
+Cloud Functions (Firebase, Node.js 22):
+- `sendVerificationEmail` — Firestore-triggered, sends verification email instantly when a user subscribes to an alert
+- `checkAlertMatches` — scheduled Sunday 5:00 UK time, fetches new_titles.json, checks against verified alerts, sends match notifications
+
+"New This Week" curation: after receiving the email, trigger the Pick Highlights workflow at https://github.com/ldev80/uk-streaming-search/actions/workflows/pick-highlights.yml with selected title numbers.
+
+Legacy launchd scrape job still exists at `~/Library/LaunchAgents/uk.co.liamdevereux.streamfind-scrape.plist` as fallback.
 
 ## Service scrapers — problems and fixes
 
