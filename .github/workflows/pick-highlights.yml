@@ -1,0 +1,79 @@
+name: Pick Highlights
+
+on:
+  workflow_dispatch:
+    inputs:
+      selections:
+        description: 'Title numbers to highlight (e.g. "3, 7, 12-15")'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate new_this_week.json
+        env:
+          SELECTIONS: ${{ github.event.inputs.selections }}
+        run: |
+          python3 << 'PYEOF'
+          import json, os, sys
+
+          if not os.path.exists("new_titles.json"):
+              print("No new_titles.json found — run the weekly scrape first")
+              sys.exit(1)
+
+          titles = json.load(open("new_titles.json"))
+          by_svc = {}
+          for t in titles:
+              by_svc.setdefault(t.get("service", "unknown"), []).append(t)
+
+          numbered = []
+          for svc, items in sorted(by_svc.items()):
+              for item in sorted(items, key=lambda x: x["title"].lower()):
+                  numbered.append(item)
+
+          selections = os.environ["SELECTIONS"]
+          selected = []
+          for part in selections.split(","):
+              part = part.strip()
+              if "-" in part:
+                  start, end = part.split("-", 1)
+                  for i in range(int(start.strip()), int(end.strip()) + 1):
+                      if 1 <= i <= len(numbered):
+                          selected.append(numbered[i - 1])
+              elif part.isdigit():
+                  i = int(part)
+                  if 1 <= i <= len(numbered):
+                      selected.append(numbered[i - 1])
+
+          if not selected:
+              print("No valid selections")
+              sys.exit(1)
+
+          with open("new_this_week.json", "w") as f:
+              json.dump(selected, f, ensure_ascii=False, indent=2)
+          print(f"Selected {len(selected)} highlights")
+          PYEOF
+
+      - name: Copy to public and commit
+        run: |
+          cp new_this_week.json public/new_this_week.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add new_this_week.json public/new_this_week.json
+          git commit -m "Pick highlights — $(date -u '+%Y-%m-%d')"
+          git push
+
+      - name: Deploy to Firebase
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project streamfind-2abe7
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

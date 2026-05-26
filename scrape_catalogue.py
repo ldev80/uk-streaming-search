@@ -1234,24 +1234,28 @@ def scrape_wedotv(conn: sqlite3.Connection) -> int:
 # ---------------------------------------------------------------------------
 
 SERVICES = {
-    "bbc":       ("BBC iPlayer",    scrape_bbc),
-    "itvx":      ("ITVX",           scrape_itvx),
-    "channel4":  ("Channel 4",      scrape_channel4),
-    "channel5":  ("Channel 5",      scrape_channel5),
-    "pbs":       ("PBS America",    scrape_pbs_america),
-    "pluto":     ("Pluto TV UK",    scrape_pluto_tv),
-    "tubi":      ("Tubi",           scrape_tubi),
-    "tptv":      ("TPTV Encore",    scrape_tptv_encore),
-    "uktv":      ("UKTV Play",      scrape_uktv),
-    "filmzie":   ("Filmzie",        scrape_filmzie),
-    "rakuten":   ("Rakuten TV",     scrape_rakuten),
-    "wedotv":    ("Wedotv",         scrape_wedotv),
+    "bbc":       ("BBC iPlayer",    scrape_bbc,        "bbc_iplayer"),
+    "itvx":      ("ITVX",           scrape_itvx,       "itvx"),
+    "channel4":  ("Channel 4",      scrape_channel4,   "channel4"),
+    "channel5":  ("Channel 5",      scrape_channel5,   "channel5"),
+    "pbs":       ("PBS America",    scrape_pbs_america, "pbs_america"),
+    "pluto":     ("Pluto TV UK",    scrape_pluto_tv,   "pluto_tv_uk"),
+    "tubi":      ("Tubi",           scrape_tubi,       "tubi"),
+    "tptv":      ("TPTV Encore",    scrape_tptv_encore, "tptv_encore"),
+    "uktv":      ("UKTV Play",      scrape_uktv,      "uktv_play"),
+    "filmzie":   ("Filmzie",        scrape_filmzie,    "filmzie"),
+    "rakuten":   ("Rakuten TV",     scrape_rakuten,    "rakuten_tv"),
+    "wedotv":    ("Wedotv",         scrape_wedotv,     "wedotv"),
 }
 
 
 def run_scrape(conn: sqlite3.Connection, service_key: str):
-    """Run a single service scrape with logging."""
-    name, func = SERVICES[service_key]
+    """Run a single service scrape with logging.
+
+    Scrapes first, then removes stale rows on success. If the scrape fails
+    or returns 0 results, old data is preserved.
+    """
+    name, func, db_service = SERVICES[service_key]
     logger.info(f"{'='*60}")
     logger.info(f"Starting scrape: {name}")
     logger.info(f"{'='*60}")
@@ -1263,14 +1267,16 @@ def run_scrape(conn: sqlite3.Connection, service_key: str):
     log_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     try:
-        # Clear old data for this service before fresh scrape
-        clear_service(conn, name.lower().replace(" ", "_"))
-        # Also clear by service key pattern
-        for svc_name in [name, service_key, name.lower().replace(" ", "_")]:
-            conn.execute("DELETE FROM programmes WHERE service = ?", (svc_name,))
-        conn.commit()
-
         count = func(conn)
+
+        if count > 0:
+            conn.execute(
+                "DELETE FROM programmes WHERE service = ? AND scraped_at < ?",
+                (db_service, started),
+            )
+            conn.commit()
+        else:
+            logger.warning(f"⚠ {name}: scrape returned 0 programmes, keeping old data")
 
         conn.execute(
             "UPDATE scrape_log SET finished_at=?, status='success', count=? WHERE id=?",
@@ -1281,6 +1287,7 @@ def run_scrape(conn: sqlite3.Connection, service_key: str):
         return count
 
     except Exception as e:
+        conn.rollback()
         conn.execute(
             "UPDATE scrape_log SET finished_at=?, status='error', error_msg=? WHERE id=?",
             (datetime.now(timezone.utc).isoformat(), str(e), log_id)
@@ -1313,7 +1320,7 @@ def main():
 
     if args.list:
         print("\nAvailable services:")
-        for key, (name, _) in SERVICES.items():
+        for key, (name, _, _) in SERVICES.items():
             print(f"  {key:12s}  {name}")
         print()
         return

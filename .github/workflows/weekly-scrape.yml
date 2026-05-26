@@ -1,0 +1,101 @@
+name: Weekly Scrape
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'  # Sunday 2:00 UTC (3:00 BST)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 playwright
+          playwright install chromium --with-deps
+
+      - name: Run scraper
+        run: python scrape_catalogue.py
+
+      - name: Prepare public files
+        run: |
+          cp catalogue.json public/catalogue.json
+          cp index.html public/index.html
+          [ -f new_titles.json ] && cp new_titles.json public/new_titles.json || true
+          [ -f new_this_week.json ] && cp new_this_week.json public/new_this_week.json || true
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catalogue.db catalogue.json public/catalogue.json public/index.html
+          [ -f new_titles.json ] && git add new_titles.json public/new_titles.json || true
+          [ -f new_this_week.json ] && git add new_this_week.json public/new_this_week.json || true
+          git diff --cached --quiet && echo "No changes to catalogue" && exit 0
+          git commit -m "Update catalogue — $(date -u '+%Y-%m-%d')"
+          git pull --rebase
+          git push
+
+      - name: Deploy to Firebase
+        if: success()
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project streamfind-2abe7
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Email new titles for curation
+        if: hashFiles('new_titles.json') != ''
+        env:
+          GMAIL_USER: tvsearchuk@gmail.com
+          GMAIL_PASS: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TO_EMAIL: info@liamdevereux.co.uk
+        run: |
+          python3 << 'PYEOF'
+          import json, smtplib, os
+          from email.mime.text import MIMEText
+
+          titles = json.load(open("new_titles.json"))
+          if not titles:
+              print("No new titles")
+              exit(0)
+
+          by_svc = {}
+          for t in titles:
+              by_svc.setdefault(t.get("service", "unknown"), []).append(t)
+
+          lines = [f"{len(titles)} new titles added this week.\n"]
+          n = 0
+          for svc, items in sorted(by_svc.items()):
+              lines.append(f"\n{svc} ({len(items)} new):")
+              for item in sorted(items, key=lambda x: x["title"].lower()):
+                  n += 1
+                  lines.append(f"  {n:>4}. {item['title']}")
+
+          lines.append("\n\nTo pick highlights, go to:")
+          lines.append("https://github.com/ldev80/uk-streaming-search/actions/workflows/pick-highlights.yml")
+          lines.append('Click "Run workflow" and enter your selections (e.g. 3, 7, 12-15)')
+
+          body = "\n".join(lines)
+          msg = MIMEText(body)
+          msg["Subject"] = f"tvsearch.uk: {len(titles)} new titles for curation"
+          msg["From"] = os.environ["GMAIL_USER"]
+          msg["To"] = os.environ["TO_EMAIL"]
+
+          with smtplib.SMTP("smtp.gmail.com", 587) as s:
+              s.starttls()
+              s.login(os.environ["GMAIL_USER"], os.environ["GMAIL_PASS"])
+              s.send_message(msg)
+          print(f"Sent curation email with {n} titles")
+          PYEOF
