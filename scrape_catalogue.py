@@ -40,6 +40,11 @@ LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 REQUEST_TIMEOUT = 30
 PLAYWRIGHT_TIMEOUT = 45_000  # ms
 
+# If a scrape returns more than this multiple of the previous count, reject it.
+# Guards against geo-IP mismatches (e.g. Pluto TV returning US catalogue from
+# a non-UK runner) and other API anomalies.
+MAX_GROWTH_FACTOR = 2.0
+
 HEADERS_DEFAULT = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -1266,8 +1271,33 @@ def run_scrape(conn: sqlite3.Connection, service_key: str):
     conn.commit()
     log_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
+    old_count = conn.execute(
+        "SELECT COUNT(*) FROM programmes WHERE service = ?", (db_service,)
+    ).fetchone()[0]
+
     try:
         count = func(conn)
+
+        if count > 0 and old_count > 0 and count > old_count * MAX_GROWTH_FACTOR:
+            conn.execute(
+                "DELETE FROM programmes WHERE service = ? AND scraped_at >= ?",
+                (db_service, started),
+            )
+            conn.commit()
+            logger.warning(
+                f"⚠ {name}: scrape returned {count} programmes "
+                f"(was {old_count}, {count/old_count:.1f}x growth) — "
+                f"rejecting as likely geo-IP mismatch, keeping old data"
+            )
+            conn.execute(
+                "UPDATE scrape_log SET finished_at=?, status='rejected', count=?, "
+                "error_msg=? WHERE id=?",
+                (datetime.now(timezone.utc).isoformat(), count,
+                 f"Rejected: {count/old_count:.1f}x growth exceeds {MAX_GROWTH_FACTOR}x limit",
+                 log_id),
+            )
+            conn.commit()
+            return old_count
 
         if count > 0:
             conn.execute(
