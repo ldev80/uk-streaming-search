@@ -56,7 +56,7 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
       - name: Email new titles for curation
-        if: hashFiles('new_titles.json') != ''
+        if: always() && hashFiles('new_titles.json') != ''
         env:
           GMAIL_USER: tvsearchuk@gmail.com
           GMAIL_PASS: ${{ secrets.GMAIL_APP_PASSWORD }}
