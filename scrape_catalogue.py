@@ -1098,7 +1098,7 @@ def scrape_filmzie(conn: sqlite3.Connection) -> int:
                 categories = item.get("category", [])
                 released = (item.get("released") or "")[:4]
                 upsert_programme(conn, "filmzie", title,
-                                 url=f"https://filmzie.com/{sef}" if sef else "https://filmzie.com",
+                                 url=f"https://filmzie.com/content/{sef}" if sef else "https://filmzie.com",
                                  description=(item.get("description") or "")[:500],
                                  programme_id=fid,
                                  extra={"genre": categories,

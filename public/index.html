@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UK Freeview Search — Find What to Watch for Free | tvsearch.uk</title>
+<title>TVSearch UK — Freely streaming films and shows in the UK | tvsearch.uk</title>
 <meta name="description" content="Search 23,000+ programmes across 13 free UK streaming services including BBC iPlayer, ITVX, Channel 4, Channel 5, STV Player, Pluto TV, Tubi, Rakuten TV and more.">
 <meta name="keywords" content="free streaming UK, watch free TV, BBC iPlayer search, ITVX, Channel 4, free movies UK, free TV shows, streaming search engine">
 <link rel="canonical" href="https://tvsearch.uk/">
@@ -16,7 +16,7 @@
 <meta name="twitter:title" content="UK Free Streaming Search">
 <meta name="twitter:description" content="Search 23,000+ programmes across 13 free UK streaming services. Find what to watch — instantly.">
 <meta name="robots" content="index, follow">
-<meta name="theme-color" content="#0c0e12">
+<meta name="theme-color" content="#2B2B35">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -40,14 +40,14 @@
 }
 
 :root {
-    --bg: #0c0e12;
-    --surface: #161920;
-    --surface2: #1e222c;
-    --border: #2a2f3a;
-    --text: #e8eaed;
-    --text-dim: #8a8f9c;
-    --accent: #60a5fa;
-    --accent-glow: rgba(96, 165, 250, 0.15);
+    --bg: #2B2B35;
+    --surface: #364556;
+    --surface2: #47646A;
+    --border: #47646A;
+    --text: #F4F4EA;
+    --text-dim: #DDD8CE;
+    --accent: #D8533D;
+    --accent-glow: rgba(216, 83, 61, 0.2);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -72,14 +72,11 @@ header {
 
 header h1 {
     font-family: 'Open Sans', sans-serif;
-    font-size: 1.6rem;
+    font-size: 3.2rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     margin-bottom: 0.4rem;
-    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #fff;
 }
 
 header p {
@@ -190,10 +187,10 @@ header p {
     font-family: 'Open Sans', sans-serif;
     font-size: 0.85rem;
     font-weight: 700;
-    color: #ffffff;
+    color: #fff;
     padding: 0.5rem 0;
     margin-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #DDD8CE;
 }
 
 .result-card {
@@ -247,7 +244,7 @@ header p {
 
 .card-title mark {
     background: var(--accent-glow);
-    color: var(--accent);
+    color: #EA714B;
     border-radius: 2px;
     padding: 0 2px;
 }
@@ -318,7 +315,7 @@ header p {
     font-family: 'Open Sans', sans-serif;
     font-size: 0.85rem;
     background: var(--accent);
-    color: #000;
+    color: #fff;
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -338,8 +335,8 @@ header p {
     margin-top: 0.6rem;
 }
 
-.alert-msg.ok { color: #4caf50; }
-.alert-msg.err { color: #ef5350; }
+.alert-msg.ok { color: #F4F4EA; }
+.alert-msg.err { color: #AF3E3E; }
 
 .footer {
     text-align: center;
@@ -455,8 +452,8 @@ header p {
 <body>
 <div class="container">
     <header>
-        <h1>UK FREEVIEW SEARCH</h1>
-        <p id="subtitle">Loading catalogue&hellip;</p>
+        <h1>TVSearch UK</h1>
+        <p id="subtitle">Freely streaming films and shows in the UK</p>
     </header>
 
     <div class="search-box">
@@ -534,7 +531,7 @@ fetch('catalogue.json')
             total++;
         }
 
-        subtitle.textContent = 'This week there are ' + total.toLocaleString() + ' programmes across ' + Object.keys(counts).length + ' services';
+        subtitle.textContent = 'Freely streaming films and shows in the UK — ' + total.toLocaleString() + ' titles across ' + Object.keys(counts).length + ' services';
 
         // Build logo strip
         let logoHtml = '';
