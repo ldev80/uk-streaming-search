@@ -1,27 +1,19 @@
 #!/usr/bin/env python3
-"""Send verification emails and match notifications for title alerts.
-
-Runs every 10 minutes via launchd to send verification emails.
-Also checks verified alerts against new_titles.json after each scrape.
-"""
+"""Send verification emails and match notifications for title alerts."""
 
 import json
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from pathlib import Path
 
+import requests
 import firebase_admin
 from firebase_admin import firestore
 
 PROJECT = Path(__file__).parent
 NEW_TITLES = PROJECT / "new_titles.json"
 
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_USER = os.environ.get("ALERT_EMAIL", "")
-SMTP_PASS = os.environ.get("ALERT_EMAIL_PASSWORD", "")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+FROM_EMAIL = "tvsearch.uk <alerts@tvsearch.uk>"
 SITE_URL = "https://tvsearch.uk"
 
 SERVICE_LABELS = {
@@ -47,19 +39,23 @@ def init_firebase():
 
 
 def send_email(to, subject, html_body):
-    if not SMTP_USER or not SMTP_PASS:
-        print(f"  SMTP not configured — would send to {to}: {subject}")
+    if not RESEND_API_KEY:
+        print(f"  RESEND_API_KEY not set — would send to {to}: {subject}")
         return False
-    msg = MIMEMultipart("alternative")
-    msg["From"] = f"tvsearch.uk <{SMTP_USER}>"
-    msg["To"] = to
-    msg["Subject"] = subject
-    msg["List-Unsubscribe"] = f"<{SITE_URL}/unsubscribe.html>"
-    msg.attach(MIMEText(html_body, "html"))
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASS)
-        server.send_message(msg)
+    resp = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "from": FROM_EMAIL,
+            "to": [to],
+            "subject": subject,
+            "html": html_body,
+        },
+    )
+    resp.raise_for_status()
     return True
 
 
@@ -81,7 +77,7 @@ def send_verifications(db):
         unsubscribe_url = f"{SITE_URL}/unsubscribe.html?token={token}"
         html = f"""\
 <p>You requested an alert for <strong>{title}</strong> on tvsearch.uk.</p>
-<p><a href="{verify_url}" style="display:inline-block;padding:10px 20px;background:#60a5fa;color:#000;border-radius:8px;text-decoration:none;font-weight:600;">Confirm Alert</a></p>
+<p><a href="{verify_url}" style="display:inline-block;padding:10px 20px;background:#D8533D;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Confirm Alert</a></p>
 <p style="color:#888;font-size:13px;">If you didn't request this, ignore this email or <a href="{unsubscribe_url}">remove it</a>.</p>
 <p style="color:#888;font-size:12px;">tvsearch.uk</p>"""
 

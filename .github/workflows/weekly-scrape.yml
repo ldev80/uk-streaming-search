@@ -58,13 +58,11 @@ jobs:
       - name: Email new titles for curation
         if: always() && hashFiles('new_titles.json') != ''
         env:
-          GMAIL_USER: tvsearchuk@gmail.com
-          GMAIL_PASS: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           TO_EMAIL: info@liamdevereux.co.uk
         run: |
           python3 << 'PYEOF'
-          import json, smtplib, os
-          from email.mime.text import MIMEText
+          import json, os, urllib.request, urllib.error
 
           titles = json.load(open("new_titles.json"))
           if not titles:
@@ -88,14 +86,21 @@ jobs:
           lines.append('Click "Run workflow" and enter your selections (e.g. 3, 7, 12-15)')
 
           body = "\n".join(lines)
-          msg = MIMEText(body)
-          msg["Subject"] = f"tvsearch.uk: {len(titles)} new titles for curation"
-          msg["From"] = os.environ["GMAIL_USER"]
-          msg["To"] = os.environ["TO_EMAIL"]
+          payload = json.dumps({
+              "from": "tvsearch.uk <alerts@tvsearch.uk>",
+              "to": [os.environ["TO_EMAIL"]],
+              "subject": f"tvsearch.uk: {len(titles)} new titles for curation",
+              "text": body,
+          }).encode()
 
-          with smtplib.SMTP("smtp.gmail.com", 587) as s:
-              s.starttls()
-              s.login(os.environ["GMAIL_USER"], os.environ["GMAIL_PASS"])
-              s.send_message(msg)
+          req = urllib.request.Request(
+              "https://api.resend.com/emails",
+              data=payload,
+              headers={
+                  "Authorization": f"Bearer {os.environ['RESEND_API_KEY']}",
+                  "Content-Type": "application/json",
+              },
+          )
+          urllib.request.urlopen(req)
           print(f"Sent curation email with {n} titles")
           PYEOF

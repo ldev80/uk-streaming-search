@@ -2,14 +2,13 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const nodemailer = require("nodemailer");
 
 admin.initializeApp();
 
-const gmailPassword = defineSecret("GMAIL_APP_PASSWORD");
+const resendApiKey = defineSecret("RESEND_API_KEY");
 
 const SITE_URL = "https://tvsearch.uk";
-const GMAIL_USER = "tvsearchuk@gmail.com";
+const FROM_EMAIL = "tvsearch.uk <alerts@tvsearch.uk>";
 
 const SERVICE_LABELS = {
   bbc_iplayer: "BBC iPlayer",
@@ -26,10 +25,28 @@ const SERVICE_LABELS = {
   wedotv: "Wedotv",
 };
 
+async function sendEmail(apiKey, to, subject, html, headers) {
+  const body = { from: FROM_EMAIL, to: [to], subject, html };
+  if (headers) body.headers = headers;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Resend API error ${res.status}: ${err}`);
+  }
+  return res.json();
+}
+
 exports.sendVerificationEmail = onDocumentCreated(
   {
     document: "alerts/{token}",
-    secrets: [gmailPassword],
+    secrets: [resendApiKey],
   },
   async (event) => {
     const data = event.data.data();
@@ -38,23 +55,18 @@ exports.sendVerificationEmail = onDocumentCreated(
 
     if (!email || !title_display) return;
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: GMAIL_USER, pass: gmailPassword.value() },
-    });
-
     const verifyUrl = `${SITE_URL}/verify.html?token=${token}`;
     const unsubscribeUrl = `${SITE_URL}/unsubscribe.html?token=${token}`;
 
-    await transporter.sendMail({
-      from: `tvsearch.uk <${GMAIL_USER}>`,
-      to: email,
-      subject: `Confirm your alert for "${title_display}"`,
-      html: `<p>You requested an alert for <strong>${title_display}</strong> on tvsearch.uk.</p>
-<p><a href="${verifyUrl}" style="display:inline-block;padding:10px 20px;background:#60a5fa;color:#000;border-radius:8px;text-decoration:none;font-weight:600;">Confirm Alert</a></p>
+    await sendEmail(
+      resendApiKey.value(),
+      email,
+      `Confirm your alert for "${title_display}"`,
+      `<p>You requested an alert for <strong>${title_display}</strong> on tvsearch.uk.</p>
+<p><a href="${verifyUrl}" style="display:inline-block;padding:10px 20px;background:#D8533D;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Confirm Alert</a></p>
 <p style="color:#888;font-size:13px;">If you didn't request this, ignore this email or <a href="${unsubscribeUrl}">remove it</a>.</p>
-<p style="color:#888;font-size:12px;">tvsearch.uk</p>`,
-    });
+<p style="color:#888;font-size:12px;">tvsearch.uk</p>`
+    );
 
     await event.data.ref.update({ verification_sent: true });
   }
@@ -64,7 +76,7 @@ exports.checkAlertMatches = onSchedule(
   {
     schedule: "0 5 * * 0",
     timeZone: "Europe/London",
-    secrets: [gmailPassword],
+    secrets: [resendApiKey],
     maxInstances: 1,
   },
   async () => {
@@ -100,11 +112,6 @@ exports.checkAlertMatches = onSchedule(
       }
     }
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: { user: GMAIL_USER, pass: gmailPassword.value() },
-    });
-
     let matched = 0;
     const promises = [];
 
@@ -133,14 +140,13 @@ exports.checkAlertMatches = onSchedule(
 <p style="color:#888;font-size:12px;"><a href="${unsubUrl}">Unsubscribe</a> &middot; tvsearch.uk</p>`;
 
       promises.push(
-        transporter
-          .sendMail({
-            from: `tvsearch.uk <${GMAIL_USER}>`,
-            to: email,
-            subject: `"${titleDisplay}" is now free to stream!`,
-            html,
-            headers: { "List-Unsubscribe": `<${unsubUrl}>` },
-          })
+        sendEmail(
+          resendApiKey.value(),
+          email,
+          `"${titleDisplay}" is now free to stream!`,
+          html,
+          { "List-Unsubscribe": `<${unsubUrl}>` }
+        )
           .then(() => doc.ref.delete())
           .then(() => {
             matched++;
