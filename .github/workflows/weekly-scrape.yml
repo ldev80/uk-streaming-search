@@ -49,6 +49,7 @@ jobs:
           git push
 
       - name: Authenticate to Google Cloud
+        id: auth
         if: success()
         uses: google-github-actions/auth@v2
         with:
@@ -59,6 +60,7 @@ jobs:
         if: success()
         run: |
           npm install -g firebase-tools
+          export GOOGLE_APPLICATION_CREDENTIALS="${{ steps.auth.outputs.credentials_file_path }}"
           firebase deploy --only hosting --project streamfind-2abe7
 
       - name: Email new titles for curation
