@@ -16,7 +16,7 @@
 <meta name="twitter:title" content="UK Free Streaming Search">
 <meta name="twitter:description" content="Search 23,000+ programmes across 13 free UK streaming services. Find what to watch — instantly.">
 <meta name="robots" content="index, follow">
-<meta name="theme-color" content="#2B2B35">
+<meta name="theme-color" content="#2b2b35">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -40,14 +40,9 @@
 }
 
 :root {
-    --bg: #2B2B35;
-    --surface: #364556;
-    --surface2: #47646A;
-    --border: #47646A;
-    --text: #F4F4EA;
-    --text-dim: #DDD8CE;
-    --accent: #D8533D;
-    --accent-glow: rgba(216, 83, 61, 0.2);
+    --bg: #2b2b35;
+    --text: #f4f4ea;
+    --accent: #ea714b;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -60,33 +55,54 @@ body {
 }
 
 .container {
-    max-width: 900px;
+    max-width: 400px;
     margin: 0 auto;
     padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    transition: padding-top 0.35s ease;
+}
+
+.container.landing {
+    padding-top: 28vh;
 }
 
 header {
-    text-align: center;
-    margin-bottom: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 64px;
 }
 
-header h1 {
-    font-family: 'Open Sans', sans-serif;
-    font-size: 3.2rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin-bottom: 0.4rem;
-    color: #fff;
+.landing header {
+    margin-bottom: 64px;
+}
+
+header img.logo {
+    height: 50px;
+    width: auto;
+    flex-shrink: 0;
 }
 
 header p {
-    color: var(--text-dim);
+    color: var(--text);
     font-size: 0.9rem;
+    margin-left: auto;
+    text-align: right;
+}
+
+.search-area {
+    margin-bottom: 1.5rem;
+}
+
+.landing .new-this-week,
+.landing #results {
+    display: none;
 }
 
 .search-box {
     position: relative;
-    margin-bottom: 1.5rem;
 }
 
 .search-box input {
@@ -94,20 +110,20 @@ header p {
     padding: 1rem 1.2rem 1rem 3rem;
     font-family: 'Open Sans', sans-serif;
     font-size: 1.1rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    background: var(--bg);
+    border: none;
+    border-bottom: 1px solid var(--text);
+    border-radius: 0;
     color: var(--text);
     outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s;
 }
 
 .search-box input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-glow);
+    border-bottom-color: var(--accent);
 }
 
-.search-box input::placeholder { color: var(--text-dim); }
+.search-box input::placeholder { color: var(--text); opacity: 0.5; }
 
 .search-box .icon {
     position: absolute;
@@ -115,7 +131,7 @@ header p {
     top: 50%;
     transform: translateY(-50%);
     font-size: 1.2rem;
-    color: var(--text-dim);
+    color: var(--text);
     pointer-events: none;
 }
 
@@ -124,9 +140,9 @@ header p {
     right: 0.8rem;
     top: 50%;
     transform: translateY(-50%);
-    background: var(--surface2);
+    background: var(--text);
     border: none;
-    color: var(--text-dim);
+    color: var(--bg);
     font-size: 0.85rem;
     padding: 0.3rem 0.6rem;
     border-radius: 6px;
@@ -141,16 +157,16 @@ header p {
     gap: 1.2rem;
     justify-content: center;
     align-items: center;
-    margin-bottom: 2rem;
     padding: 0.5rem 0;
+    margin-bottom: 1rem;
 }
 
 .service-logos img {
     height: 22px;
     width: auto;
     max-width: 33px;
-    opacity: 0.7;
     object-fit: contain;
+    filter: brightness(0) invert(1);
 }
 
 .svc-logo {
@@ -167,7 +183,7 @@ header p {
 .results-count {
     font-family: 'Open Sans', sans-serif;
     font-size: 0.85rem;
-    color: var(--text-dim);
+    color: var(--text);
     margin-bottom: 1rem;
     padding-left: 0.2rem;
 }
@@ -175,7 +191,7 @@ header p {
 .no-results {
     text-align: center;
     padding: 3rem;
-    color: var(--text-dim);
+    color: var(--text);
     font-size: 1rem;
 }
 
@@ -187,10 +203,10 @@ header p {
     font-family: 'Open Sans', sans-serif;
     font-size: 0.85rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--text);
     padding: 0.5rem 0;
     margin-bottom: 0.5rem;
-    border-bottom: 1px solid #DDD8CE;
+    border-bottom: 1px solid var(--text);
 }
 
 .result-card {
@@ -198,8 +214,8 @@ header p {
     align-items: center;
     gap: 1rem;
     padding: 0.8rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--bg);
+    border: 1px solid var(--text);
     border-radius: 10px;
     margin-bottom: 0.5rem;
     text-decoration: none;
@@ -208,7 +224,6 @@ header p {
 }
 
 .result-card:hover {
-    background: var(--surface2);
     border-color: var(--accent);
     transform: translateX(2px);
 }
@@ -218,7 +233,7 @@ header p {
     height: 48px;
     border-radius: 6px;
     overflow: hidden;
-    background: var(--surface2);
+    background: var(--bg);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -243,22 +258,22 @@ header p {
 }
 
 .card-title mark {
-    background: var(--accent-glow);
-    color: #EA714B;
+    background: none;
+    color: var(--accent);
     border-radius: 2px;
     padding: 0 2px;
 }
 
 .card-desc {
     font-size: 0.8rem;
-    color: var(--text-dim);
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .card-arrow {
-    color: var(--text-dim);
+    color: var(--text);
     font-size: 1.2rem;
     flex-shrink: 0;
     transition: transform 0.15s;
@@ -270,33 +285,28 @@ header p {
 }
 
 .alert-section {
-    text-align: center;
-    margin-top: 2rem;
-    padding: 1.5rem;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--surface);
+    display: none;
 }
 
 .alert-heading {
     font-size: 0.9rem;
     font-weight: 600;
     margin-bottom: 0.8rem;
+    color: var(--text);
 }
 
 .alert-form {
     display: flex;
     gap: 0.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
 }
 
 .alert-form input {
+    flex: 1;
     padding: 0.6rem 0.8rem;
     font-family: 'Open Sans', sans-serif;
     font-size: 0.85rem;
     background: var(--bg);
-    border: 1px solid var(--border);
+    border: 1px solid var(--text);
     border-radius: 8px;
     color: var(--text);
     outline: none;
@@ -305,28 +315,28 @@ header p {
 
 .alert-form input:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-.alert-form input::placeholder { color: var(--text-dim); }
+.alert-form input::placeholder { color: var(--text); opacity: 0.5; }
 
 .alert-form button {
     padding: 0.6rem 1.2rem;
     font-family: 'Open Sans', sans-serif;
     font-size: 0.85rem;
     background: var(--accent);
-    color: #fff;
+    color: var(--bg);
     border: none;
     border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .alert-form button:disabled { opacity: 0.5; cursor: default; }
 
 .alert-subtext {
     font-size: 0.75rem;
-    color: var(--text-dim);
+    color: var(--text);
     margin-top: 0.6rem;
 }
 
@@ -335,22 +345,23 @@ header p {
     margin-top: 0.6rem;
 }
 
-.alert-msg.ok { color: #F4F4EA; }
-.alert-msg.err { color: #AF3E3E; }
+.alert-msg.ok { color: var(--text); }
+.alert-msg.err { color: var(--accent); }
 
 .footer {
     text-align: center;
-    margin-top: 3rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--border);
-    color: var(--text-dim);
+    color: var(--text);
     font-size: 0.8rem;
+}
+
+.landing .footer {
+    margin-top: 0;
 }
 
 .footer kbd {
     font-family: 'Open Sans', sans-serif;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--bg);
+    border: 1px solid var(--text);
     border-radius: 4px;
     padding: 0.15rem 0.4rem;
     font-size: 0.75rem;
@@ -359,14 +370,14 @@ header p {
 .loading {
     text-align: center;
     padding: 3rem;
-    color: var(--text-dim);
+    color: var(--text);
 }
 
 .loading .spinner {
     display: inline-block;
     width: 24px;
     height: 24px;
-    border: 2px solid var(--border);
+    border: 2px solid var(--text);
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
@@ -393,7 +404,7 @@ header p {
     overflow-x: auto;
     padding-bottom: 0.5rem;
     scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
+    scrollbar-color: var(--text) transparent;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -411,7 +422,8 @@ header p {
     height: 90px;
     border-radius: 8px;
     overflow: hidden;
-    background: var(--surface2);
+    background: var(--bg);
+    border: 1px solid var(--text);
 }
 
 .new-poster img {
@@ -431,7 +443,7 @@ header p {
 
 .new-service {
     font-size: 0.7rem;
-    color: var(--text-dim);
+    color: var(--text);
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -440,29 +452,168 @@ header p {
 
 .new-service .svc-logo { height: 12px; }
 
+.search-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.search-row .search-box {
+    flex: 1;
+}
+
+.bell-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--text);
+    border-radius: 0;
+    color: var(--text);
+    padding: 0.7rem;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+}
+
+.bell-btn:hover {
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+}
+
+.bell-plus {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    background: var(--accent);
+    color: var(--bg);
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.alert-popup {
+    margin-top: -0.75rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--text);
+    border-radius: 12px;
+}
+
+.alert-popup-text {
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
+.alert-popup-form {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.alert-popup-form input {
+    flex: 1;
+    padding: 0.6rem 0.8rem;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 0.85rem;
+    background: var(--bg);
+    border: 1px solid var(--text);
+    border-radius: 8px;
+    color: var(--text);
+    outline: none;
+    min-width: 0;
+}
+
+.alert-popup-form input:focus {
+    border-color: var(--accent);
+}
+
+.alert-popup-form input::placeholder { color: var(--text); opacity: 0.5; }
+
+.alert-popup-form button {
+    padding: 0.6rem 1.2rem;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 0.85rem;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.alert-popup-form button:disabled { opacity: 0.5; cursor: default; }
+
+.alert-popup-msg {
+    font-size: 0.85rem;
+    margin-top: 0.6rem;
+}
+
+.alert-popup-msg.ok { color: var(--text); }
+.alert-popup-msg.err { color: var(--accent); }
+
+.bottom-section {
+    margin-top: auto;
+    transition: opacity 0.3s ease;
+}
+
+.container:not(.landing) .bottom-section {
+    display: none;
+}
+
 @media (max-width: 600px) {
     .container { padding: 1rem; }
-    header h1 { font-size: 1.3rem; }
+    header { gap: 0.5rem; }
+    header img.logo { height: 36px; }
+    header p { font-size: 0.8rem; }
     .card-image { display: none; }
     .new-card { flex: 0 0 140px; }
     .new-poster { width: 140px; height: 79px; }
+    .alert-form { flex-direction: column; }
+    .alert-popup-form { flex-direction: column; }
 }
 </style>
 </head>
 <body>
-<div class="container">
+<div class="container landing" id="container">
     <header>
-        <h1>TVSearch UK</h1>
-        <p id="subtitle">Freely streaming films and shows in the UK</p>
+        <img class="logo" src="tvsearch_logo_dark.svg" alt="TVSearch UK">
+        <p id="subtitle"></p>
     </header>
 
-    <div class="search-box">
-        <span class="icon">&#x2315;</span>
-        <input type="text" id="searchInput" placeholder="Search titles&hellip;" autofocus disabled>
-        <button type="button" class="clear-btn" id="clearBtn">ESC</button>
+    <div class="search-area">
+        <div class="search-row">
+            <div class="search-box">
+                <span class="icon">&#x2315;</span>
+                <input type="text" id="searchInput" placeholder="Search titles&hellip;" autofocus disabled>
+                <button type="button" class="clear-btn" id="clearBtn">ESC</button>
+            </div>
+            <button type="button" class="bell-btn" id="bellBtn" title="Get alerted for this search">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="bell-plus">+</span>
+            </button>
+        </div>
+        <div class="alert-popup" id="alertPopup" style="display:none">
+            <p class="alert-popup-text">We'll email you when new titles matching "<strong id="alertQueryText"></strong>" appear.</p>
+            <form id="bellAlertForm" class="alert-popup-form">
+                <input type="email" id="bellAlertEmail" placeholder="Your email" required>
+                <button type="submit">Alert Me</button>
+            </form>
+            <p class="alert-popup-msg" id="bellAlertMsg" style="display:none"></p>
+        </div>
     </div>
-
-    <div class="service-logos" id="serviceLogos"></div>
 
     <div class="new-this-week" id="newThisWeek">
         <h2>New This Week</h2>
@@ -484,9 +635,11 @@ header p {
         <p class="alert-msg" id="alertMsg" style="display:none"></p>
     </div>
 
-    <div class="footer">
-        <kbd>/</kbd> to focus &nbsp; <kbd>ESC</kbd> to clear &nbsp; Results open in a new tab
-        <br><a href="/privacy.html" style="color: var(--text-dim); text-decoration: none; font-size: 0.75rem;">Privacy Policy</a>
+    <div class="bottom-section">
+        <div class="service-logos" id="serviceLogos"></div>
+        <div class="footer">
+            <a href="/privacy.html" style="color: var(--text); text-decoration: none; font-size: 0.75rem;">Privacy Policy</a>
+        </div>
     </div>
 </div>
 
@@ -497,7 +650,6 @@ const SERVICE_META = {
     channel4:     { label: 'Channel 4',     colour: '#0d47a1', icon: 'images/channel4.svg' },
     channel5:     { label: 'Channel 5',     colour: '#6a1b9a', icon: 'images/channel5.svg' },
     tptv_encore:  { label: 'TPTV Encore',   colour: '#795548', icon: 'images/tptv.svg' },
-    pbs_america:  { label: 'PBS America',   colour: '#1565c0', icon: 'images/pbs.svg' },
     uktv_play:    { label: 'UKTV Play',     colour: '#e91e63', icon: 'images/uktv.svg' },
     rakuten_tv:   { label: 'Rakuten TV',    colour: '#bf0000', icon: 'images/rakuten.svg' },
     filmzie:      { label: 'Filmzie',        colour: '#00b4d8', icon: 'images/filmzie.svg' },
@@ -513,6 +665,9 @@ const clearBtn = document.getElementById('clearBtn');
 const resultsDiv = document.getElementById('results');
 const logosDiv = document.getElementById('serviceLogos');
 const subtitle = document.getElementById('subtitle');
+const containerDiv = document.getElementById('container');
+const bellBtn = document.getElementById('bellBtn');
+const alertPopup = document.getElementById('alertPopup');
 let debounceTimer;
 
 // Load catalogue
@@ -531,7 +686,7 @@ fetch('catalogue.json')
             total++;
         }
 
-        subtitle.textContent = 'Freely streaming films and shows in the UK — ' + total.toLocaleString() + ' titles across ' + Object.keys(counts).length + ' services';
+        subtitle.textContent = total.toLocaleString() + ' films and shows free to stream now';
 
         // Build logo strip
         let logoHtml = '';
@@ -550,6 +705,8 @@ fetch('catalogue.json')
         if (q) {
             input.value = q;
             if (svc) activeService = svc;
+            clearBtn.style.display = 'block';
+            bellBtn.style.display = 'flex';
             doSearch();
         }
     })
@@ -585,6 +742,8 @@ fetch('new_this_week.json')
 // Search
 input.addEventListener('input', () => {
     clearBtn.style.display = input.value ? 'block' : 'none';
+    bellBtn.style.display = input.value.trim().length >= 2 ? 'flex' : 'none';
+    alertPopup.style.display = 'none';
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => { doSearch(); updateURL(); }, 150);
 });
@@ -592,11 +751,12 @@ input.addEventListener('input', () => {
 function doSearch() {
     const q = input.value.trim().toLowerCase();
     if (q.length < 2) {
+        containerDiv.classList.add('landing');
         resultsDiv.innerHTML = '';
-        resultsDiv.before(logosDiv);
         if (newSection.querySelector('.new-scroll').children.length) newSection.style.display = 'block';
         return;
     }
+    containerDiv.classList.remove('landing');
     newSection.style.display = 'none';
 
     let matches = catalogue.filter(item => {
@@ -608,7 +768,6 @@ function doSearch() {
 
     if (matches.length === 0) {
         resultsDiv.innerHTML = '<div class="no-results">No matches found.</div>';
-        resultsDiv.after(logosDiv);
         return;
     }
 
@@ -655,7 +814,6 @@ function doSearch() {
     if (currentSvc !== null) html += '</div>';
 
     resultsDiv.innerHTML = html;
-    resultsDiv.after(logosDiv);
 }
 
 function updateURL() {
@@ -671,8 +829,10 @@ function clearSearch() {
     input.value = '';
     activeService = '';
     clearBtn.style.display = 'none';
+    bellBtn.style.display = 'none';
+    alertPopup.style.display = 'none';
     resultsDiv.innerHTML = '';
-    resultsDiv.before(logosDiv);
+    containerDiv.classList.add('landing');
     if (newSection.querySelector('.new-scroll').children.length) newSection.style.display = 'block';
     history.replaceState(null, '', location.pathname);
     input.focus();
@@ -685,6 +845,18 @@ function escapeHtml(s) {
 }
 
 clearBtn.addEventListener('click', clearSearch);
+
+bellBtn.addEventListener('click', () => {
+    if (alertPopup.style.display === 'none' || !alertPopup.style.display) {
+        document.getElementById('alertQueryText').textContent = input.value.trim();
+        document.getElementById('bellAlertMsg').style.display = 'none';
+        document.getElementById('bellAlertForm').style.display = 'flex';
+        alertPopup.style.display = 'block';
+        document.getElementById('bellAlertEmail').focus();
+    } else {
+        alertPopup.style.display = 'none';
+    }
+});
 
 document.addEventListener('keydown', (e) => {
     if (e.key === '/' && document.activeElement !== input) {
@@ -704,6 +876,37 @@ const app = initializeApp({
     projectId: "streamfind-2abe7",
 });
 const db = getFirestore(app);
+
+document.getElementById('bellAlertForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const emailEl = document.getElementById('bellAlertEmail');
+    const msg = document.getElementById('bellAlertMsg');
+    const queryText = document.getElementById('alertQueryText').textContent;
+    const email = emailEl.value.trim();
+    if (!queryText || !email) return;
+
+    e.target.querySelector('button').disabled = true;
+    try {
+        const token = crypto.randomUUID();
+        await setDoc(doc(db, 'alerts', token), {
+            email: email,
+            title_lower: queryText.toLowerCase(),
+            title_display: queryText,
+            verified: false,
+            verification_sent: false,
+            created_at: new Date().toISOString(),
+        });
+        document.getElementById('bellAlertForm').style.display = 'none';
+        msg.textContent = 'Check your email to confirm your alert for “' + queryText + '”.';
+        msg.className = 'alert-popup-msg ok';
+        msg.style.display = 'block';
+    } catch (err) {
+        msg.textContent = 'Something went wrong. Please try again.';
+        msg.className = 'alert-popup-msg err';
+        msg.style.display = 'block';
+        e.target.querySelector('button').disabled = false;
+    }
+});
 
 document.getElementById('alertForm').addEventListener('submit', async (e) => {
     e.preventDefault();
