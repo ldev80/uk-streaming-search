@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   scrape:
@@ -48,67 +47,3 @@ jobs:
           git pull --rebase
           git push
 
-      - name: Authenticate to Google Cloud
-        id: auth
-        if: success()
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: projects/581315960699/locations/global/workloadIdentityPools/github-actions/providers/github
-          service_account: github-actions-deploy@streamfind-2abe7.iam.gserviceaccount.com
-
-      - name: Deploy to Firebase
-        if: success()
-        run: |
-          npm install -g firebase-tools
-          export GOOGLE_APPLICATION_CREDENTIALS="${{ steps.auth.outputs.credentials_file_path }}"
-          firebase deploy --only hosting --project streamfind-2abe7
-
-      - name: Email new titles for curation
-        if: always() && hashFiles('new_titles.json') != ''
-        env:
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          TO_EMAIL: info@liamdevereux.co.uk
-        run: |
-          python3 << 'PYEOF'
-          import json, os, urllib.request, urllib.error
-
-          titles = json.load(open("new_titles.json"))
-          if not titles:
-              print("No new titles")
-              exit(0)
-
-          by_svc = {}
-          for t in titles:
-              by_svc.setdefault(t.get("service", "unknown"), []).append(t)
-
-          lines = [f"{len(titles)} new titles added this week.\n"]
-          n = 0
-          for svc, items in sorted(by_svc.items()):
-              lines.append(f"\n{svc} ({len(items)} new):")
-              for item in sorted(items, key=lambda x: x["title"].lower()):
-                  n += 1
-                  lines.append(f"  {n:>4}. {item['title']}")
-
-          lines.append("\n\nTo pick highlights, go to:")
-          lines.append("https://github.com/ldev80/uk-streaming-search/actions/workflows/pick-highlights.yml")
-          lines.append('Click "Run workflow" and enter your selections (e.g. 3, 7, 12-15)')
-
-          body = "\n".join(lines)
-          payload = json.dumps({
-              "from": "tvsearch.uk <alerts@tvsearch.uk>",
-              "to": [os.environ["TO_EMAIL"]],
-              "subject": f"tvsearch.uk: {len(titles)} new titles for curation",
-              "text": body,
-          }).encode()
-
-          req = urllib.request.Request(
-              "https://api.resend.com/emails",
-              data=payload,
-              headers={
-                  "Authorization": f"Bearer {os.environ['RESEND_API_KEY']}",
-                  "Content-Type": "application/json",
-              },
-          )
-          urllib.request.urlopen(req)
-          print(f"Sent curation email with {n} titles")
-          PYEOF
